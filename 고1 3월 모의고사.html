@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>고1 3월 모의고사</title>
+<!-- 홈 화면에 추가하면 주소창 없이 꽉 찬 화면으로 열린다 -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#e8e6e0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="3월 모의고사">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -21,6 +30,7 @@ input{font:inherit}
 
 /* ---------- 공통 ---------- */
 .topbar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--paper);border-bottom:2px solid var(--line);min-height:52px}
+.topbar .fs-btn{font-size:13px;padding:7px 8px;color:var(--sub)}
 .topbar .title{flex:1;text-align:center;font-family:var(--serif);font-weight:700;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btn{border:1.5px solid var(--line);background:var(--paper);padding:7px 14px;border-radius:4px;font-size:15px;white-space:nowrap}
 .btn:hover{background:var(--hl)}
@@ -528,10 +538,34 @@ async function route() {
 window.addEventListener('hashchange', route);
 
 function topbar(title, { back = '#/', right = '' } = {}) {
-  const bar = h(`<div class="topbar"><button class="btn ghost" data-back>← ${back === '#/' ? '처음으로' : '뒤로'}</button><div class="title">${title}</div>${typeof right === 'string' ? (right || '<span style="width:90px"></span>') : ''}</div>`);
+  const bar = h(`<div class="topbar"><button class="btn ghost" data-back>← ${back === '#/' ? '처음으로' : '뒤로'}</button>${FS.ok ? '<button class="btn ghost fs-btn" data-fs title="전체화면"></button>' : ''}<div class="title">${title}</div>${typeof right === 'string' ? (right || '<span style="width:90px"></span>') : ''}</div>`);
   if (right instanceof Node) bar.appendChild(right);
   bar.querySelector('[data-back]').onclick = () => go(back);
   return bar;
+}
+
+// ---------- 전체화면 ----------
+// 브라우저는 사용자가 화면을 누르기 전에는 전체화면을 허용하지 않으므로, 처음 누를 때 한 번 켠다.
+// 홈 화면에 추가해서 연 경우(standalone)는 이미 꽉 찬 화면이라 건드리지 않는다.
+const FS = {
+  el: document.documentElement,
+  get ok() { return !!(this.el.requestFullscreen || this.el.webkitRequestFullscreen) && !this.standalone; },
+  get standalone() { return matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true; },
+  get on() { return !!(document.fullscreenElement || document.webkitFullscreenElement); },
+  enter() { const f = this.el.requestFullscreen || this.el.webkitRequestFullscreen; try { const p = f.call(this.el); if (p && p.catch) p.catch(() => {}); } catch (e) {} },
+  exit() { const f = document.exitFullscreen || document.webkitExitFullscreen; try { const p = f.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) {} },
+  toggle() { this.on ? this.exit() : this.enter(); },
+  sync() { document.querySelectorAll('[data-fs]').forEach(b => { b.textContent = FS.on ? '⤡ 작게' : '⤢ 전체화면'; }); },
+};
+if (FS.ok) {
+  window.addEventListener('pointerdown', function first(e) {
+    window.removeEventListener('pointerdown', first, true);
+    if (!FS.on && !e.target.closest('[data-fs]')) FS.enter();
+  }, true);
+  document.addEventListener('click', e => { if (e.target.closest('[data-fs]')) FS.toggle(); });
+  document.addEventListener('fullscreenchange', () => FS.sync());
+  document.addEventListener('webkitfullscreenchange', () => FS.sync());
+  new MutationObserver(() => FS.sync()).observe(document.getElementById('app'), { childList: true });
 }
 function screen(title, opts, body) {
   const el = h(`<div style="display:flex;flex-direction:column;height:100%"></div>`);
@@ -563,6 +597,7 @@ async function home() {
     </div>
     ${recent.length ? `<div class="h3">최근 시험 결과</div><div class="list">${recent.map(r => `<div class="item" data-go="#/result/${r.id}"><div class="main"><div class="t">${examName(r)}</div><div class="m">${fmtDate(r.finishedAt)} · ${r.correct}/${numsOf(r).length} 문항</div></div><div class="t">${r.score}점${r.half ? ` <span class="muted" style="font-size:13px">/ ${maxScore(r)}</span>` : ''}</div></div>`).join('')}</div>` : ''}
     <div style="margin-top:28px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+      ${FS.ok ? '<button class="btn small" data-fs></button>' : ''}
       <button class="btn small" data-backup>기록 내보내기</button>
       <label class="btn small">기록 불러오기<input type="file" accept=".json" hidden data-restore></label>
     </div>
