@@ -545,8 +545,8 @@ function topbar(title, { back = '#/', right = '' } = {}) {
 }
 
 // ---------- 전체화면 ----------
-// 브라우저는 사용자가 화면을 누르기 전에는 전체화면을 허용하지 않으므로, 처음 누를 때 한 번 켠다.
-// 홈 화면에 추가해서 연 경우(standalone)는 이미 꽉 찬 화면이라 건드리지 않는다.
+// [전체화면] 버튼을 누를 때만 켜고 끈다.
+// 홈 화면에 추가해서 연 경우(standalone)는 이미 꽉 찬 화면이라 버튼을 보이지 않는다.
 const FS = {
   el: document.documentElement,
   get ok() { return !!(this.el.requestFullscreen || this.el.webkitRequestFullscreen) && !this.standalone; },
@@ -558,10 +558,6 @@ const FS = {
   sync() { document.querySelectorAll('[data-fs]').forEach(b => { b.textContent = FS.on ? '⤡ 작게' : '⤢ 전체화면'; }); },
 };
 if (FS.ok) {
-  window.addEventListener('pointerdown', function first(e) {
-    window.removeEventListener('pointerdown', first, true);
-    if (!FS.on && !e.target.closest('[data-fs]')) FS.enter();
-  }, true);
   document.addEventListener('click', e => { if (e.target.closest('[data-fs]')) FS.toggle(); });
   document.addEventListener('fullscreenchange', () => FS.sync());
   document.addEventListener('webkitfullscreenchange', () => FS.sync());
