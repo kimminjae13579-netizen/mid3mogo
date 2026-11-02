@@ -554,7 +554,16 @@ let cleanup = null;
 const app = $('#app');
 function go(hash) { location.hash = hash; }
 function mount(el, fin) { if (cleanup) { try { cleanup(); } catch (e) { console.error(e); } } cleanup = fin || null; app.innerHTML = ''; app.appendChild(el); }
+// 키보드 ← → : 이전·다음 문제 (문제 화면마다 NAV에 넣어 둠. 답 칸에 글자를 쓰는 중이거나 창이 떠 있으면 쓰지 않음)
+let NAV = null;
+document.addEventListener('keydown', e => {
+  if ((e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey || !NAV) return;
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement && document.activeElement.tagName) || document.querySelector('.modal-bg')) return;
+  const f = NAV[e.key === 'ArrowRight' ? 'next' : 'prev'];
+  if (f) { e.preventDefault(); f(); }
+});
 async function route() {
+  NAV = null;
   const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   const [a, b, c, d] = parts;
   try {
@@ -775,6 +784,7 @@ async function examRun(id) {
     const i = NUMS.indexOf(k);
     const prev = h(`<button class="btn" ${i === 0 ? 'disabled' : ''}>◀ 이전</button>`), next = h(`<button class="btn" ${i === NUMS.length - 1 ? 'disabled' : ''}>다음 ▶</button>`);
     prev.onclick = () => show(NUMS[i - 1]); next.onclick = () => show(NUMS[i + 1]);
+    NAV = { prev: i > 0 ? prev.onclick : null, next: i < NUMS.length - 1 ? next.onclick : null };
     ab.append(prev, next);
     pane.appendChild(ab);
     if (stopped) paperObj.ink.readOnly = true;
@@ -875,7 +885,11 @@ async function review(attId, n) {
   const el = h(`<div style="display:flex;flex-direction:column;height:100%"></div>`);
   const bar = topbar(`${a.y}학년도 3월 ${n}번 · ${nth ? `${nth}차 ` : ''}풀이 보기`, { back, right: nav });
   el.appendChild(bar);
-  if (isExam) { bar.querySelector('[data-prev]').onclick = () => location.replace(`#/review/${a.id}/${NUMS[i - 1]}`); bar.querySelector('[data-next]').onclick = () => location.replace(`#/review/${a.id}/${NUMS[i + 1]}`); }
+  if (isExam) {
+    const pv = () => location.replace(`#/review/${a.id}/${NUMS[i - 1]}`), nx = () => location.replace(`#/review/${a.id}/${NUMS[i + 1]}`);
+    bar.querySelector('[data-prev]').onclick = pv; bar.querySelector('[data-next]').onclick = nx;
+    NAV = { prev: i > 0 ? pv : null, next: i < NUMS.length - 1 ? nx : null };
+  }
   const rv = h(`<div class="review"><div class="left"></div><div class="right"></div></div>`);
   el.appendChild(rv);
   const p = makePaper(a.y, n, a.ink[n], scheduleSave);
@@ -989,6 +1003,8 @@ async function solve(y, n) {
   pane.appendChild(ab);
   const tick = setInterval(accrue, 1000);
   mount(el, () => { clearInterval(tick); clearTimeout(saveT); if (!finished) { accrue(); saveAtt(a); } p.ink.destroy(); });
+  // 연습: 같은 해 앞·뒤 번호 문제로
+  NAV = { prev: n > 1 ? () => go(`#/solve/${y}/${n - 1}`) : null, next: n < 30 ? () => go(`#/solve/${y}/${n + 1}`) : null };
 }
 
 // ---------- 오답노트 ----------
