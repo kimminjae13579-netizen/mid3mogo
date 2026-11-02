@@ -204,7 +204,6 @@ table.key td.k{background:#eee;font-style:italic}
 .examples{margin-top:6px;display:flex;flex-wrap:wrap;gap:6px}
 .examples button{border:1px dashed #999;background:transparent;border-radius:999px;padding:2px 10px;font-size:13px;color:var(--sub)}
 .progress{height:6px;background:#ddd;margin-top:10px}
-.source{margin:22px 0 0;padding-top:10px;border-top:1px solid var(--soft);color:var(--sub);font-size:12px;line-height:1.6;letter-spacing:-0.02em}
 /* 오답노트 파일 저장 */
 .printbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;margin-bottom:10px;border:1.5px solid var(--line);background:var(--hl);font-size:14px}
 .printbar .grow{flex:1}
@@ -235,8 +234,6 @@ const unitsOf = g => Object.keys(UNITS).map(Number).filter(u => gradeOf(u) === g
 const unitName = u => `${gradeOf(u)}학년 ${UNITS[u]}`;
 const unitShort = u => `중${gradeOf(u)} ${UNITS[u]}`;
 const CIRC = ['', '①', '②', '③', '④', '⑤'];
-// 문제·해설 출처 (해설지 첫 쪽의 안내 문구를 따름)
-const SOURCE = '문제·해설 출처: 17개 시도교육청 주관 전국연합학력평가 고1 3월 수학 영역(2021~2026학년도), 자료 제공 EBSi. 수업 목적으로만 사용하며 무단 전재 및 재배포를 금합니다.';
 const ALL_NUMS = Array.from({ length: 30 }, (_, i) => i + 1);
 // 시험: half 0 = 전체(100분), 1 = 1부 홀수번(50분), 2 = 2부 짝수번(50분)
 const examMs = half => (half ? 50 : 100) * 60 * 1000;
@@ -639,7 +636,6 @@ async function home() {
       <button class="btn small" data-backup>기록 내보내기</button>
       <label class="btn small">기록 불러오기<input type="file" accept=".json" hidden data-restore></label>
     </div>
-    <p class="source">${SOURCE}</p>
   </div>`);
   body.addEventListener('click', e => {
     const g = e.target.closest('[data-go]'); if (g) go(g.dataset.go);
@@ -897,8 +893,7 @@ async function review(attId, n) {
       <button class="btn" data-again>다시 풀기</button>
     </div>
     <p class="muted" style="font-size:13px;margin-top:-6px">왼쪽 내 풀이는 고칠 수 있고, 고친 내용은 바로 저장됩니다.</p>
-    <div class="sol"><div class="label">해 설</div>${it.s.map(s => `<img src="${s.src}" alt="해설">`).join('')}</div>
-    <p class="source">${SOURCE}</p>`;
+    <div class="sol"><div class="label">해 설</div>${it.s.map(s => `<img src="${s.src}" alt="해설">`).join('')}</div>`;
   R.querySelector('[data-note]').onclick = async e => {
     if (await DB.get(`wrong:${a.y}-${n}`)) { await DB.del(`wrong:${a.y}-${n}`); e.target.textContent = '오답노트 담기'; e.target.classList.add('primary'); toast('오답노트에서 뺐습니다'); }
     else { await addWrong(a, n); e.target.textContent = '오답노트에서 빼기'; e.target.classList.remove('primary'); toast('오답노트에 담았습니다'); }
