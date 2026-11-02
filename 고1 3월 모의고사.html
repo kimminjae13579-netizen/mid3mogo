@@ -96,6 +96,8 @@ input{font:inherit}
 .paper img.q{position:absolute;left:0;top:0;width:100%;pointer-events:none;user-select:none;-webkit-user-drag:none}
 .paper canvas{position:absolute;left:0;top:0;touch-action:none}
 .paper .more{position:absolute;left:0;right:0;bottom:0;height:0}
+#qsBadge{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:50;background:rgba(17,17,17,.82);color:#fff;padding:6px 14px;border-radius:999px;font-size:15px;pointer-events:none;opacity:0;transition:opacity .2s}
+#qsBadge.on{opacity:1}
 .tools{flex:none;display:flex;align-items:center;gap:6px;padding:6px 12px;background:#f7f6f2;border-bottom:1px solid #bdb8ad;flex-wrap:wrap}
 .tool{min-width:38px;padding:0 6px;white-space:nowrap;height:34px;border:1.5px solid transparent;background:transparent;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
 .tool.on{border-color:var(--line);background:#fff}
@@ -316,6 +318,8 @@ class Ink {
     host.append(this.c, this.live);
     this.live.style.pointerEvents = 'none';
     this.cur = null; this.pan = null; this.penSeen = false;
+    this.touches = new Map(); this.pinch = null;                  // 두 손가락으로 오므리기·벌리기: 문제 그림 크기 (data.qs)
+    this.img = host.querySelector('img.q'); this.applyQs();
     this.c.addEventListener('pointerdown', e => this.down(e));
     this.c.addEventListener('pointermove', e => this.move(e));
     this.c.addEventListener('pointerup', e => this.up(e));
@@ -345,7 +349,28 @@ class Ink {
     const pr = e.pointerType === 'pen' ? (e.pressure || 0.5) : 0.5;
     return [Math.round((e.clientX - r.left) / this.scale * 10) / 10, Math.round((e.clientY - r.top) / this.scale * 10) / 10, Math.round(pr * 100) / 100];
   }
+  // 문제 그림 크기: 종이(필기 공간)는 그대로 두고 문제만 왼쪽 위에 작게 → 옆과 아래에 쓸 자리가 넓어짐
+  applyQs() { if (this.img) this.img.style.width = (this.data.qs || 1) * 100 + '%'; }
+  pinchStart(e) {
+    const [a, b] = [...this.touches.values()];
+    this.pan = null; this.erasing = false;
+    if (this.cur) { this.cur = null; this.live.getContext('2d').clearRect(0, 0, this.live.width, this.live.height); }   // 첫 손가락으로 긋던 획은 버림
+    this.pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, qs: this.data.qs || 1 };
+    e.preventDefault();
+  }
+  pinchMove() {
+    const [a, b] = [...this.touches.values()];
+    const q = Math.min(1, Math.max(0.4, this.pinch.qs * Math.hypot(a[0] - b[0], a[1] - b[1]) / this.pinch.d));
+    this.data.qs = Math.round(q * 100) / 100; this.applyQs();
+    qsBadge(this.data.qs);
+  }
   down(e) {
+    if (e.pointerType === 'touch') {
+      this.touches.set(e.pointerId, [e.clientX, e.clientY]);
+      try { this.c.setPointerCapture(e.pointerId); } catch (_) {}
+      if (this.touches.size === 2 && this.img && !this.readOnly) { this.pinchStart(e); return; }
+      if (this.pinch) return;
+    }
     if (e.pointerType === 'pen') this.penSeen = true;
     if (e.pointerType === 'touch' && (!PEN.finger || this.penSeen)) {
       this.pan = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: this.scroller.scrollLeft, sy: this.scroller.scrollTop };
@@ -361,6 +386,8 @@ class Ink {
     this.cur = { c: hl ? '#ffd400' : PEN.color, w: hl ? 18 : PEN.width, a: hl ? 0.35 : 1, pr: e.pointerType === 'pen' && !hl ? 1 : 0, p: p };
   }
   move(e) {
+    if (this.touches.has(e.pointerId)) this.touches.set(e.pointerId, [e.clientX, e.clientY]);
+    if (this.pinch) { if (this.touches.size >= 2) this.pinchMove(); return; }
     if (this.pan && e.pointerId === this.pan.id) {
       this.scroller.scrollTop = this.pan.sy - (e.clientY - this.pan.y);
       this.scroller.scrollLeft = this.pan.sx - (e.clientX - this.pan.x);
@@ -373,6 +400,11 @@ class Ink {
     this.drawLive();
   }
   up(e) {
+    this.touches.delete(e.pointerId);
+    if (this.pinch) {                                             // 손가락을 떼면 이 크기를 이 문제와 다음 새 문제에 씀
+      if (this.touches.size < 2) { this.pinch = null; PEN.qs = this.data.qs; savePen(); this.onChange && this.onChange(); }
+      return;
+    }
     if (this.pan && e.pointerId === this.pan.id) { this.pan = null; return; }
     if (this.erasing) { this.erasing = false; this.onChange && this.onChange(); return; }
     if (!this.cur) return;
@@ -435,11 +467,21 @@ class Ink {
   }
 }
 
+// 오므리는 동안 화면 위쪽에 문제 크기(%)를 잠깐 보여 준다
+let qsBadgeT = 0;
+function qsBadge(q) {
+  let b = document.getElementById('qsBadge');
+  if (!b) { b = document.createElement('div'); b.id = 'qsBadge'; document.body.appendChild(b); }
+  b.textContent = `문제 크기 ${Math.round(q * 100)}%`; b.classList.add('on');
+  clearTimeout(qsBadgeT); qsBadgeT = setTimeout(() => b.classList.remove('on'), 900);
+}
+
 // 문제지 + 필기 영역을 만든다
 function makePaper(y, n, inkData, onChange, { solution = false } = {}) {
   const it = item(y, n);
   const qh = Math.round(it.q.h * 1000 / it.q.w);
   if (!inkData.H) inkData.H = Math.max(qh + 1500, 2300);
+  if (inkData.qs == null) inkData.qs = inkData.s && inkData.s.length ? 1 : (PEN.qs || 1);   // 새 문제는 마지막으로 쓴 문제 크기로 (예전 필기가 있는 문제는 원래 크기)
   const scroller = h(`<div class="paper-scroll"></div>`);
   const paper = h(`<div class="paper"><img class="q" alt="${y}학년도 ${n}번 문제" src="${it.q.src}"></div>`);
   scroller.appendChild(paper);
@@ -1036,14 +1078,15 @@ async function wrongNote() {
 async function inkedProblem(y, n, ink) {
   const it = item(y, n), scale = it.q.w / 1000;
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = it.q.src; });
-  const qh = it.q.h * 1000 / it.q.w;                    // 논리 좌표(폭 1000)에서 문제 높이
+  const qs = (ink && ink.qs) || 1;                      // 두 손가락으로 줄인 문제 크기
+  const qh = it.q.h * 1000 / it.q.w * qs;               // 논리 좌표(폭 1000)에서 문제 높이
   let bottom = qh;
   for (const s of (ink && ink.s) || []) for (let i = 1; i < s.p.length; i += 3) bottom = Math.max(bottom, s.p[i] + s.w);
   const c = document.createElement('canvas');
-  c.width = it.q.w; c.height = Math.max(it.q.h, Math.ceil((bottom + 24) * scale));
+  c.width = it.q.w; c.height = Math.max(Math.round(it.q.h * qs), Math.ceil((bottom + 24) * scale));
   const g = c.getContext('2d');
   g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-  g.drawImage(img, 0, 0);
+  g.drawImage(img, 0, 0, it.q.w * qs, it.q.h * qs);
   for (const s of (ink && ink.s) || []) Ink.paint(g, s, scale);
   return c.toDataURL('image/png');
 }
