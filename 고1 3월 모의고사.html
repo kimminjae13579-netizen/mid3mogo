@@ -166,6 +166,7 @@ table.key td.k{background:#eee;font-style:italic}
 .modal h3{margin:0 0 14px;font-family:var(--serif);font-size:20px}
 .modal .acts{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
 .overlay-stop{position:absolute;inset:0;background:rgba(255,255,255,.75);display:flex;align-items:center;justify-content:center;z-index:30;font-family:var(--serif);font-size:30px;font-weight:900}
+.overlay-stop.pause-cover{background:var(--bg)}
 .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 18px;border-radius:6px;z-index:60;font-size:15px}
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;min-width:0}
 .field input[type=text]{border:1.5px solid var(--line);padding:8px 10px;border-radius:3px;width:100%;min-width:0}
@@ -624,7 +625,7 @@ function screen(title, opts, body) {
 async function home() {
   const atts = await DB.all('att:');
   const running = atts.filter(a => a.kind === 'exam' && !a.done);
-  for (const r of running) if (Date.now() >= r.endsAt) await finishExam(r);
+  for (const r of running) if (examLeft(r) <= 0) await finishExam(r);
   const live = running.filter(r => !r.done);
   const recent = atts.filter(a => a.kind === 'exam' && a.done).sort((x, y) => y.finishedAt - x.finishedAt).slice(0, 5);
   const body = h(`<div>
@@ -632,7 +633,7 @@ async function home() {
       <div class="kicker">2021 ~ 2026학년도 3월 고1 전국연합학력평가</div>
       <div class="row"><span class="pill">제 2 교시</span><h1>수학 영역</h1><span class="pill">고 1</span></div>
     </div>
-    ${live.map(r => `<div class="verdict" style="justify-content:space-between"><div class="info"><b>${examName(r)} 시험</b>이 진행 중입니다 · 남은 시간 ${fmtClock(r.endsAt - Date.now())}</div><button class="btn primary" data-resume="${r.id}">이어서 풀기</button></div>`).join('')}
+    ${live.map(r => `<div class="verdict" style="justify-content:space-between"><div class="info"><b>${examName(r)} 시험</b>이 ${r.pausedAt ? '일시정지되어 있습니다' : '진행 중입니다'} · 남은 시간 ${fmtClock(examLeft(r))}</div><button class="btn primary" data-resume="${r.id}">이어서 풀기</button></div>`).join('')}
     <div class="menu">
       <button data-go="#/exam"><div class="no">1.</div><div class="name">시험보기</div><div class="desc">연도를 골라 30문항을 100분 동안, 또는 하프 모의고사(홀수번·짝수번 15문항)를 50분 동안 풉니다. 시간이 끝나면 바로 채점합니다.</div></button>
       <button data-go="#/practice"><div class="no">2.</div><div class="name">연습하기</div><div class="desc">원하는 문항 하나를 골라 풀거나, 학년·단원별로 모아서 풉니다.</div></button>
@@ -735,20 +736,25 @@ async function finishExam(a) {
     a.result[n] = ok;
     if (ok) { score += it.score; correct++; }
   }
+  examResume(a);
   a.done = true; a.score = score; a.correct = correct; a.finishedAt = Math.min(Date.now(), a.endsAt);
   await saveAtt(a);
 }
+
+// 시험 일시정지: 멈춘 동안은 남은 시간이 줄지 않음 (pausedAt: 멈춘 때. 다시 시작하면 멈춘 만큼 끝나는 때를 뒤로 미룸)
+const examLeft = a => a.endsAt - (a.pausedAt || Date.now());
+function examResume(a) { if (a.pausedAt) { a.endsAt += Date.now() - a.pausedAt; a.pausedAt = null; } }
 
 async function examRun(id) {
   const a = await getAtt(id);
   if (!a) return go('#/exam');
   if (a.done) return go('#/result/' + id);
-  if (Date.now() >= a.endsAt) { await finishExam(a); return go('#/result/' + id); }
+  if (examLeft(a) <= 0) { await finishExam(a); return go('#/result/' + id); }
   const NUMS = numsOf(a);
   let n = NUMS.includes(a.cur) ? a.cur : NUMS[0], paperObj = null, saveT = null, stopped = false;
   const sw = new Stopwatch();
   const el = h(`<div style="display:flex;flex-direction:column;height:100%"></div>`);
-  const right = h(`<span style="display:flex;gap:8px;align-items:center"><span class="timer">--:--</span><button class="btn omr-toggle" data-omr>답안지</button><button class="btn primary" data-submit>답안 제출</button></span>`);
+  const right = h(`<span style="display:flex;gap:8px;align-items:center"><span class="timer">--:--</span><button class="btn" data-pause></button><button class="btn omr-toggle" data-omr>답안지</button><button class="btn primary" data-submit>답안 제출</button></span>`);
   const bar = topbar(`${examName(a)} 3월 고1 수학 영역`, { back: '#/', right });
   el.appendChild(bar);
   const work = h(`<div class="work"><div class="pane"></div><div class="omr"><h4>답 안 지</h4></div></div>`);
@@ -756,7 +762,28 @@ async function examRun(id) {
   const pane = work.querySelector('.pane'), omr = work.querySelector('.omr');
 
   const scheduleSave = () => { clearTimeout(saveT); saveT = setTimeout(() => saveAtt(a), 700); };
-  const accrue = () => { if (!stopped) a.times[n] = (a.times[n] || 0) + sw.lap(); };
+  const accrue = () => { const d = sw.lap(); if (!stopped && !a.pausedAt) a.times[n] = (a.times[n] || 0) + d; };   // 멈춘 동안은 문항 시간도 세지 않음
+
+  // 일시정지: 문제를 가리고 시간을 멈춤. [다시 시작]을 누르면 이어서
+  const pauseBtn = right.querySelector('[data-pause]'), timerEl = right.querySelector('.timer');
+  const pauseCover = h(`<div class="overlay-stop pause-cover"><div style="text-align:center">일시정지
+    <div style="font-size:16px;font-weight:400;margin:10px 0 18px;font-family:var(--sans)">남은 시간이 멈춰 있습니다. 문제는 다시 시작하면 보입니다.</div>
+    <button class="btn primary" data-resume style="font-size:18px;padding:10px 26px">▶ 다시 시작</button></div></div>`);
+  function setPause(on) {
+    if (stopped) return;
+    accrue();
+    if (on) a.pausedAt = a.pausedAt || Date.now(); else examResume(a);
+    saveAtt(a); paintPause();
+  }
+  function paintPause() {
+    const on = !!a.pausedAt;
+    pauseBtn.textContent = on ? '▶ 다시 시작' : '⏸ 일시정지';
+    pauseBtn.classList.toggle('primary', on);
+    if (on) { work.style.position = 'relative'; work.appendChild(pauseCover); } else pauseCover.remove();
+    timerEl.textContent = fmtClock(examLeft(a));
+  }
+  pauseBtn.onclick = () => setPause(!a.pausedAt);
+  pauseCover.querySelector('[data-resume]').onclick = () => setPause(false);
 
   function renderOMR() {
     omr.querySelectorAll('.r').forEach(r => r.remove());
@@ -794,7 +821,7 @@ async function examRun(id) {
   async function stop(timeUp) {
     if (stopped) return;
     accrue(); stopped = true;
-    clearInterval(tick); clearTimeout(saveT);
+    clearInterval(tick); clearTimeout(saveT); pauseCover.remove(); pauseBtn.disabled = true;
     if (paperObj) paperObj.ink.readOnly = true;
     work.style.position = 'relative';
     work.appendChild(h(`<div class="overlay-stop">${timeUp ? '시험 시간이 끝났습니다' : '답안을 제출했습니다'}</div>`));
@@ -806,19 +833,19 @@ async function examRun(id) {
     modal(`<h3>답안을 제출할까요?</h3><p>${blank.length ? `아직 답을 적지 않은 문항이 <b>${blank.length}개</b> 있습니다: ${blank.join(', ')}` : '모든 문항에 답을 적었습니다.'}</p><p class="muted">제출하면 바로 채점하고, 더 이상 답을 고칠 수 없습니다.</p>`, [['계속 풀기'], ['제출하고 채점', () => stop(false), true]]);
   };
 
-  const timerEl = right.querySelector('.timer');
   const tick = setInterval(() => {
     accrue();
-    const left = a.endsAt - Date.now();
+    const left = examLeft(a);
     timerEl.textContent = fmtClock(left);
     timerEl.classList.toggle('warn', left < 10 * 60 * 1000);
     if (left <= 0) stop(true);
   }, 500);
-  timerEl.textContent = fmtClock(a.endsAt - Date.now());
+  timerEl.textContent = fmtClock(examLeft(a));
   const onVis = () => { accrue(); saveAtt(a); };
   document.addEventListener('visibilitychange', onVis);
   mount(el, () => { clearInterval(tick); document.removeEventListener('visibilitychange', onVis); if (!stopped) { accrue(); saveAtt(a); } if (paperObj) paperObj.ink.destroy(); });
   show(n);
+  paintPause();                                                   // 멈춘 채로 나갔던 시험은 멈춘 채로 다시 열림
 }
 
 // ---------- 결과 ----------
