@@ -212,6 +212,19 @@ table.key td.k{background:#eee;font-style:italic}
 .list .item .pick{width:22px;height:22px;flex:none;cursor:pointer}
 
 .progress div{height:100%;background:var(--ink);width:0}
+/* 이전·다음 (답 고르는 칸 바로 옆) */
+.qnav{display:flex;gap:6px;align-items:center;margin-left:6px}
+/* 지오지브라 그림 */
+.modal-bg:has(.ggb-modal){padding:8px}
+.modal.ggb-modal{max-width:none;width:100%;height:100%;max-height:none;display:flex;flex-direction:column;padding:12px 16px}
+.modal.ggb-modal h3{margin:0 0 8px}
+.modal.ggb-modal .ggb-box{flex:1;min-height:0}
+.modal.ggb-modal .acts{margin-top:10px}
+.ggb-box{width:100%;border:1px solid var(--soft);background:#fff;min-height:120px;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:14px;overflow:hidden}
+.ggb-box>div{margin:0 auto}
+.pw{display:flex;gap:8px;margin-top:6px}
+.pw input{flex:1;border:1.5px solid var(--line);padding:10px 12px;border-radius:3px;font-size:20px;letter-spacing:6px;min-width:0}
+.pw-err{color:var(--bad);font-size:14px;min-height:20px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -219,6 +232,7 @@ table.key td.k{background:#eee;font-style:italic}
 <script src="data.js"></script>
 <script src="hwpx_tpl.js"></script>
 <script src="hwpx.js"></script>
+<script src="ggb.js"></script>
 <script>
 'use strict';
 const D = window.MOCK_DATA;
@@ -544,6 +558,78 @@ function answerInput(n, value, onSet, disabled = false) {
   return wrap;
 }
 
+// 답 칸 바로 옆 [◀ 이전] [다음 ▶]. prev/next 가 없으면 그 버튼은 흐리게
+function qnav(prev, next) {
+  const w = h(`<span class="qnav"><button class="btn" ${prev ? '' : 'disabled'}>◀ 이전</button><button class="btn" ${next ? '' : 'disabled'}>다음 ▶</button></span>`);
+  const [p, n] = w.querySelectorAll('button');
+  if (prev) p.onclick = prev;
+  if (next) n.onclick = next;
+  return w;
+}
+
+// ---------- 지오지브라 그림 (ggb.js 의 window.GGB['연도-번호']) ----------
+const GGB_PW = '123';
+const hasGgb = (y, n) => !!(window.GGB && window.GGB[`${y}-${n}`]);
+let ggbLoader = null;
+function loadGgb() {
+  if (window.GGBApplet) return Promise.resolve();
+  return ggbLoader = ggbLoader || new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://www.geogebra.org/apps/deployggb.js';
+    s.onload = res; s.onerror = () => { ggbLoader = null; rej(new Error('지오지브라를 불러오지 못했습니다 (인터넷 연결 확인)')); };
+    document.head.appendChild(s);
+  });
+}
+// box 안에 그림을 넣는다. 그림 원래 크기는 1000×560 이고, box 에 꽉 차게 키우거나 줄인다
+// (fill: box 의 폭과 높이 둘 다에 맞춤 — 큰 창 / 아니면 폭에만 맞춤 — 해설 칸)
+let ggbSeq = 0;
+async function mountGgb(box, y, n, { fill = false } = {}) {
+  box.textContent = '그림을 불러오는 중…';
+  try { await loadGgb(); } catch (e) { box.textContent = e.message; return; }
+  const id = 'ggb' + (++ggbSeq);
+  const W = box.clientWidth - 2, H = box.clientHeight - 2;
+  const k = Math.max(0.3, fill ? Math.min(W / 1000, H / 560) : W / 1000);
+  if (!fill) box.style.height = Math.ceil(560 * k) + 2 + 'px';
+  // 지오지브라가 이 칸의 폭(1000×k)에 맞춰 그림 전체를 키우거나 줄인다
+  box.innerHTML = `<div class="ggb-scale-${id}" style="width:${Math.floor(1000 * k)}px;height:${Math.floor(560 * k)}px"><div id="${id}"></div></div>`;
+  new GGBApplet({
+    appName: 'classic', ggbBase64: window.GGB[`${y}-${n}`], width: 1000, height: 560,
+    scaleContainerClass: 'ggb-scale-' + id, allowUpscale: true, autoHeight: false,
+    showToolBar: false, showAlgebraInput: false, showMenuBar: false, enableRightClick: false,
+    enableShiftDragZoom: true, showResetIcon: true, enableLabelDrags: false, useBrowserForJS: false,
+    showZoomButtons: true, language: 'ko',
+  }, true).inject(id);
+}
+function ggbModal(y, n) {
+  const bg = h(`<div class="modal-bg"><div class="modal ggb-modal"><h3>${y}학년도 3월 ${n}번 · 그림</h3><div class="ggb-box"></div><div class="acts"><button class="btn primary">닫기</button></div></div></div>`);
+  bg.querySelector('.acts button').onclick = () => bg.remove();
+  bg.addEventListener('click', e => { if (e.target === bg) bg.remove(); });
+  document.body.appendChild(bg);
+  mountGgb(bg.querySelector('.ggb-box'), y, n, { fill: true });
+}
+// 문제 풀 때: 암호를 넣어야 그림이 열림 (한 번 맞히면 그 화면에서는 다시 묻지 않음)
+function ggbButton(y, n) {
+  let ok = false;
+  const b = h(`<button class="btn">그림 확인하기</button>`);
+  b.onclick = () => {
+    if (ok) return ggbModal(y, n);
+    const bg = h(`<div class="modal-bg"><div class="modal" style="max-width:380px"><h3>암호를 입력하세요</h3>
+      <form class="pw"><input type="password" inputmode="numeric" autocomplete="off" placeholder="암호"><button class="btn primary">확인</button></form>
+      <div class="pw-err"></div><div class="acts"><button class="btn" type="button" data-x>취소</button></div></div></div>`);
+    const inp = bg.querySelector('input');
+    bg.querySelector('[data-x]').onclick = () => bg.remove();
+    bg.addEventListener('click', e => { if (e.target === bg) bg.remove(); });
+    bg.querySelector('form').onsubmit = e => {
+      e.preventDefault();
+      if (inp.value === GGB_PW) { ok = true; bg.remove(); ggbModal(y, n); }
+      else { bg.querySelector('.pw-err').textContent = '암호가 맞지 않습니다'; inp.value = ''; inp.focus(); }
+    };
+    document.body.appendChild(bg);
+    setTimeout(() => inp.focus(), 0);
+  };
+  return b;
+}
+
 // 화면에서 머문 시간을 잰다 (화면이 가려지면 멈춤)
 class Stopwatch {
   constructor() { this.last = performance.now(); }
@@ -807,12 +893,11 @@ async function examRun(id) {
     pane.appendChild(paperObj.scroller);
     const ab = h(`<div class="answerbar"><span class="qn">${k}번 답</span></div>`);
     ab.appendChild(answerInput(k, a.answers[k], v => { a.answers[k] = v; scheduleSave(); renderOMR(); }, stopped));
-    ab.appendChild(h(`<span class="grow"></span>`));
     const i = NUMS.indexOf(k);
-    const prev = h(`<button class="btn" ${i === 0 ? 'disabled' : ''}>◀ 이전</button>`), next = h(`<button class="btn" ${i === NUMS.length - 1 ? 'disabled' : ''}>다음 ▶</button>`);
-    prev.onclick = () => show(NUMS[i - 1]); next.onclick = () => show(NUMS[i + 1]);
-    NAV = { prev: i > 0 ? prev.onclick : null, next: i < NUMS.length - 1 ? next.onclick : null };
-    ab.append(prev, next);
+    NAV = { prev: i > 0 ? () => show(NUMS[i - 1]) : null, next: i < NUMS.length - 1 ? () => show(NUMS[i + 1]) : null };
+    ab.appendChild(qnav(NAV.prev, NAV.next));
+    ab.appendChild(h(`<span class="grow"></span>`));
+    if (hasGgb(a.y, k)) ab.appendChild(ggbButton(a.y, k));
     pane.appendChild(ab);
     if (stopped) paperObj.ink.readOnly = true;
     renderOMR();
@@ -934,7 +1019,9 @@ async function review(attId, n) {
       <button class="btn" data-again>다시 풀기</button>
     </div>
     <p class="muted" style="font-size:13px;margin-top:-6px">왼쪽 내 풀이는 고칠 수 있고, 고친 내용은 바로 저장됩니다.</p>
+    ${hasGgb(a.y, n) ? `<div class="sol" style="margin-bottom:18px"><div class="label">그 림</div><div class="ggb-box" data-ggb></div></div>` : ''}
     <div class="sol"><div class="label">해 설</div>${it.s.map(s => `<img src="${s.src}" alt="해설">`).join('')}</div>`;
+  if (hasGgb(a.y, n)) mountGgb(R.querySelector('[data-ggb]'), a.y, n);   // 해설에서는 암호 없이 바로
   R.querySelector('[data-note]').onclick = async e => {
     if (await DB.get(`wrong:${a.y}-${n}`)) { await DB.del(`wrong:${a.y}-${n}`); e.target.textContent = '오답노트 담기'; e.target.classList.add('primary'); toast('오답노트에서 뺐습니다'); }
     else { await addWrong(a, n); e.target.textContent = '오답노트에서 빼기'; e.target.classList.remove('primary'); toast('오답노트에 담았습니다'); }
@@ -1015,7 +1102,11 @@ async function solve(y, n) {
   pane.append(toolbar(() => p.ink), p.scroller);
   const ab = h(`<div class="answerbar"><span class="qn">${n}번 답</span></div>`);
   ab.appendChild(answerInput(n, a.answers[n], v => { a.answers[n] = v; scheduleSave(); }));
+  // 연습: 같은 해 앞·뒤 번호 문제로 (버튼과 ← → 키)
+  NAV = { prev: n > 1 ? () => go(`#/solve/${y}/${n - 1}`) : null, next: n < 30 ? () => go(`#/solve/${y}/${n + 1}`) : null };
+  ab.appendChild(qnav(NAV.prev, NAV.next));
   ab.appendChild(h(`<span class="grow"></span>`));
+  if (hasGgb(y, n)) ab.appendChild(ggbButton(y, n));
   const g = h(`<button class="btn primary">채점하기</button>`);
   g.onclick = async () => {
     if (a.answers[n] === undefined || a.answers[n] === '') { toast('답을 먼저 고르거나 적어 주세요'); return; }
@@ -1030,8 +1121,6 @@ async function solve(y, n) {
   pane.appendChild(ab);
   const tick = setInterval(accrue, 1000);
   mount(el, () => { clearInterval(tick); clearTimeout(saveT); if (!finished) { accrue(); saveAtt(a); } p.ink.destroy(); });
-  // 연습: 같은 해 앞·뒤 번호 문제로
-  NAV = { prev: n > 1 ? () => go(`#/solve/${y}/${n - 1}`) : null, next: n < 30 ? () => go(`#/solve/${y}/${n + 1}`) : null };
 }
 
 // ---------- 오답노트 ----------
