@@ -121,8 +121,20 @@ input{font:inherit}
 .omr .b{width:26px;height:26px;border:1px solid #888;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center;background:#fff;color:#c22}
 .omr .b.on{background:#111;color:#fff;border-color:#111}
 .omr .sbox{flex:1;height:26px;border:1px solid #888;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--serif)}
+.omr .cnt{text-align:center;font-size:13px;margin:-2px 0 8px;color:var(--sub)}
+.omr .cnt b{color:var(--ink)}
+.omr .cnt b.left{color:var(--bad)}
 .omr-toggle{display:none}
-@media (max-width:900px){
+/* 태블릿: 답안지를 항상 옆에 두고 조금 좁게 */
+@media (max-width:1100px){
+  .omr{width:196px;padding:8px 6px 30px}
+  .omr .r{gap:2px}
+  .omr .r .n{width:24px;padding-right:2px}
+  .omr .b{width:23px;height:23px;font-size:11px}
+  .omr .sbox{height:23px}
+}
+/* 휴대폰: 답안지는 버튼으로 열고 닫기 */
+@media (max-width:699px){
   .omr{position:fixed;right:0;top:52px;bottom:0;z-index:20;transform:translateX(100%);transition:transform .2s;box-shadow:-4px 0 14px rgba(0,0,0,.2)}
   .omr.open{transform:none}
   .omr-toggle{display:inline-block}
@@ -367,13 +379,23 @@ class Ink {
     const [a, b] = [...this.touches.values()];
     this.pan = null; this.erasing = false;
     if (this.cur) { this.cur = null; this.live.getContext('2d').clearRect(0, 0, this.live.width, this.live.height); }   // 첫 손가락으로 긋던 획은 버림
-    this.pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, qs: this.data.qs || 1 };
+    // 필기도 문제 그림과 함께 왼쪽 위를 기준으로 줄이고 늘림 → 오므리기 시작 때의 획을 기준으로 매번 다시 계산
+    this.pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, qs: this.data.qs || 1, base: this.data.s.map(s => ({ s, p: s.p.slice(), w: s.w })) };
     e.preventDefault();
   }
   pinchMove() {
     const [a, b] = [...this.touches.values()];
     const q = Math.min(1, Math.max(0.4, this.pinch.qs * Math.hypot(a[0] - b[0], a[1] - b[1]) / this.pinch.d));
-    this.data.qs = Math.round(q * 100) / 100; this.applyQs();
+    const qs = Math.round(q * 100) / 100;
+    if (qs === this.data.qs) return;
+    this.data.qs = qs; this.applyQs();
+    const r = qs / this.pinch.qs;
+    for (const o of this.pinch.base) {
+      const p = o.s.p;
+      for (let i = 0; i < p.length; i += 3) { p[i] = Math.round(o.p[i] * r * 10) / 10; p[i + 1] = Math.round(o.p[i + 1] * r * 10) / 10; }
+      o.s.w = Math.round(o.w * r * 100) / 100;
+    }
+    this.redraw();
     qsBadge(this.data.qs);
   }
   down(e) {
@@ -872,7 +894,10 @@ async function examRun(id) {
   pauseCover.querySelector('[data-resume]').onclick = () => setPause(false);
 
   function renderOMR() {
-    omr.querySelectorAll('.r').forEach(r => r.remove());
+    omr.querySelectorAll('.r, .cnt').forEach(r => r.remove());
+    const done = NUMS.filter(k => a.answers[k] !== undefined && a.answers[k] !== '').length;
+    omr.appendChild(h(`<div class="cnt">답한 문항 <b>${done}</b> · 남은 문항 <b class="${done < NUMS.length ? 'left' : ''}">${NUMS.length - done}</b></div>`));
+    omrBtn.textContent = `답안지 ${done}/${NUMS.length}`;
     for (const k of NUMS) {
       const v = a.answers[k];
       const r = h(`<div class="r ${k === n ? 'cur' : ''}" data-k="${k}"><span class="n">${k}</span>${isMC(k) ? [1, 2, 3, 4, 5].map(i => `<span class="b ${v === i ? 'on' : ''}">${i}</span>`).join('') : `<span class="sbox">${v === '' || v == null ? '' : v}</span>`}</div>`);
@@ -880,7 +905,8 @@ async function examRun(id) {
     }
   }
   omr.addEventListener('click', e => { const r = e.target.closest('.r'); if (r) { show(+r.dataset.k); omr.classList.remove('open'); } });
-  right.querySelector('[data-omr]').onclick = () => omr.classList.toggle('open');
+  const omrBtn = right.querySelector('[data-omr]');
+  omrBtn.onclick = () => omr.classList.toggle('open');
 
   function show(k) {
     accrue();
