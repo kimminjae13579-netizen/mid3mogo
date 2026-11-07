@@ -30,8 +30,9 @@ input{font:inherit}
 
 /* ---------- 공통 ---------- */
 .topbar{flex:none;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--paper);border-bottom:2px solid var(--line);min-height:52px}
-.topbar .fs-btn{font-size:13px;padding:7px 8px;color:var(--sub)}
-.topbar .title{flex:1;text-align:center;font-family:var(--serif);font-weight:700;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .fs-btn{font-size:15px;padding:7px 8px;color:var(--sub)}
+.topbar .title{flex:1;text-align:center;font-family:var(--serif);font-weight:700;font-size:21px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .btn{font-size:17px}
 .btn{border:1.5px solid var(--line);background:var(--paper);padding:7px 14px;border-radius:4px;font-size:15px;white-space:nowrap}
 .btn:hover{background:var(--hl)}
 .btn.primary{background:var(--ink);color:#fff}
@@ -52,12 +53,22 @@ input{font:inherit}
 .exam-head h1{margin:0;font-family:var(--serif);font-weight:900;font-size:38px;letter-spacing:6px}
 .section-tag{display:inline-block;border:1.5px solid var(--line);padding:3px 12px;font-family:var(--serif);font-weight:700;letter-spacing:3px;background:var(--hl);margin-bottom:12px}
 
-.menu{display:grid;grid-template-columns:repeat(2,1fr);grid-auto-rows:minmax(178px,1fr);gap:16px}
-.menu button{border:1.5px solid var(--line);background:var(--paper);padding:16px 20px;text-align:left;border-radius:2px;display:flex;flex-direction:column;justify-content:center}
+.menu{display:grid;grid-template-columns:repeat(2,1fr);grid-auto-rows:minmax(120px,1fr);gap:16px}
+.menu button{border:1.5px solid var(--line);background:var(--paper);padding:16px 20px;text-align:left;border-radius:2px;display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:baseline;align-content:center}
+.menu .desc{grid-column:1/-1}
 .menu button:hover{background:var(--hl)}
 .menu .no{font-family:var(--serif);font-style:italic;font-weight:700;font-size:26px}
-.menu .name{font-family:var(--serif);font-weight:700;font-size:24px;margin:4px 0 6px}
-.menu .desc{color:var(--sub);font-size:14px;line-height:1.5;letter-spacing:-0.05em}
+.menu .name{font-family:var(--serif);font-weight:700;font-size:26px;margin:0 0 6px}
+.menu .desc{color:var(--sub);font-size:16px;line-height:1.5;letter-spacing:-0.03em}
+/* 처음 화면: 가운데에 놓고, 아래 글씨는 크게 */
+.home-wrap .scroll{display:flex;flex-direction:column}
+.home-wrap .page{margin:auto;width:100%;padding-top:22px;padding-bottom:22px;box-sizing:border-box}
+.home .h3{font-size:22px;margin-top:30px}
+.home .list .item{padding:14px 8px}
+.home .list .item .t{font-size:21px}
+.home .list .item .m{font-size:16px}
+.home .list .item .muted{font-size:16px!important}
+.home .btn.small{font-size:17px;padding:9px 16px}
 @media (max-width:560px){.menu{grid-template-columns:1fr}}
 
 .grid-years{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
@@ -99,12 +110,12 @@ input{font:inherit}
 #qsBadge{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:50;background:rgba(17,17,17,.82);color:#fff;padding:6px 14px;border-radius:999px;font-size:15px;pointer-events:none;opacity:0;transition:opacity .2s}
 #qsBadge.on{opacity:1}
 .tools{flex:none;display:flex;align-items:center;gap:6px;padding:6px 12px;background:#f7f6f2;border-bottom:1px solid #bdb8ad;flex-wrap:wrap}
-.tool{min-width:38px;padding:0 6px;white-space:nowrap;height:34px;border:1.5px solid transparent;background:transparent;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+.tool{min-width:38px;padding:0 6px;white-space:nowrap;height:38px;border:1.5px solid transparent;background:transparent;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:15px}
 .tool.on{border-color:var(--line);background:#fff}
 .tool .dot{width:16px;height:16px;border-radius:50%}
 .tools .sep{width:1px;height:24px;background:#bdb8ad;margin:0 4px}
 .tools .grow{flex:1}
-.tools label{font-size:13px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.tools label{font-size:15px;display:flex;align-items:center;gap:4px;white-space:nowrap}
 .answerbar{flex:none;display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--paper);border-top:2px solid var(--line);flex-wrap:wrap}
 .answerbar .qn{font-family:var(--serif);font-weight:700;font-size:18px;min-width:84px}
 .opt{width:44px;height:44px;border:1.5px solid var(--line);border-radius:50%;background:var(--paper);font-family:var(--serif);font-size:20px}
@@ -114,14 +125,19 @@ input{font:inherit}
 
 /* OMR */
 .omr{flex:none;width:250px;background:var(--paper);border-left:2px solid var(--line);overflow:auto;padding:10px 10px 30px}
-.omr h4{margin:4px 0 8px;text-align:center;font-family:var(--serif);letter-spacing:4px;border-bottom:1.5px solid var(--line);padding-bottom:6px}
+.omr h4{margin:0;flex:1;text-align:center;font-family:var(--serif);letter-spacing:4px;font-size:18px}
+.omr .hd{display:flex;align-items:center;gap:4px;margin:2px 0 8px;border-bottom:1.5px solid var(--line);padding-bottom:6px}
+.omr .hd button{width:40px;height:36px;border:1.5px solid var(--line);background:#fff;border-radius:4px;font-size:16px}
+.omr .hd button:disabled{opacity:.35}
+.omr .sbox input{width:100%;height:100%;border:0;text-align:center;font-family:var(--serif);font-size:17px;background:#fffbe6;outline:none}
+.omr.stopped .b,.omr.stopped .sbox{cursor:default}
 .omr .r{display:flex;align-items:center;gap:3px;padding:3px 2px;border-radius:3px;cursor:pointer}
 .omr .r.cur{background:#e3e9f4}
-.omr .r .n{width:28px;font-family:var(--serif);font-weight:700;font-style:italic;text-align:right;padding-right:4px}
-.omr .b{width:26px;height:26px;border:1px solid #888;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center;background:#fff;color:#c22}
+.omr .r .n{width:28px;font-family:var(--serif);font-weight:700;font-style:italic;text-align:right;padding-right:4px;font-size:17px}
+.omr .b{width:27px;height:27px;border:1px solid #888;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#fff;color:#c22}
 .omr .b.on{background:#111;color:#fff;border-color:#111}
-.omr .sbox{flex:1;height:26px;border:1px solid #888;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--serif)}
-.omr .cnt{text-align:center;font-size:13px;margin:-2px 0 8px;color:var(--sub)}
+.omr .sbox{flex:1;height:27px;border:1px solid #888;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:17px;background:#fff;cursor:text;overflow:hidden}
+.omr .cnt{text-align:center;font-size:15px;margin:-2px 0 8px;color:var(--sub)}
 .omr .cnt b{color:var(--ink)}
 .omr .cnt b.left{color:var(--bad)}
 .omr-toggle{display:none}
@@ -130,8 +146,8 @@ input{font:inherit}
   .omr{width:196px;padding:8px 6px 30px}
   .omr .r{gap:2px}
   .omr .r .n{width:24px;padding-right:2px}
-  .omr .b{width:23px;height:23px;font-size:11px}
-  .omr .sbox{height:23px}
+  .omr .b{width:24px;height:24px;font-size:13px}
+  .omr .sbox{height:24px}
 }
 /* 휴대폰: 답안지는 버튼으로 열고 닫기 */
 @media (max-width:699px){
@@ -183,6 +199,11 @@ table.key td.k{background:#eee;font-style:italic}
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;min-width:0}
 .field input[type=text]{border:1.5px solid var(--line);padding:8px 10px;border-radius:3px;width:100%;min-width:0}
 .sel-list{border:1.5px solid var(--line);min-height:60px;max-height:320px;overflow:auto}
+.exp .chip{border-radius:5px;padding:8px 16px;font-size:16px}
+.exp .num{border-radius:5px}
+.exp .sel-list{border-radius:5px}
+.exp .bulk>*{border-radius:5px}
+.exp .bulk{margin:12px 0 0}
 .sel-list .r{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--soft);font-size:14px}
 .sel-list .r .k{font-family:var(--serif);font-weight:700;width:34px}
 .sel-list .r .t{flex:1}
@@ -245,6 +266,8 @@ table.key td.k{background:#eee;font-style:italic}
 <script src="hwpx_tpl.js"></script>
 <script src="hwpx.js"></script>
 <script src="ggb.js"></script>
+<script src="lab.js"></script>
+<script src="figs.js"></script>
 <script>
 'use strict';
 const D = window.MOCK_DATA;
@@ -264,10 +287,14 @@ const CIRC = ['', '①', '②', '③', '④', '⑤'];
 const ALL_NUMS = Array.from({ length: 30 }, (_, i) => i + 1);
 // 시험: half 0 = 전체(100분), 1 = 1부 홀수번(50분), 2 = 2부 짝수번(50분)
 const examMs = half => (half ? 50 : 100) * 60 * 1000;
-const numsOf = a => a.half ? ALL_NUMS.filter(k => k % 2 === a.half % 2) : ALL_NUMS;
+const numsOf = a => a.custom ? a.custom.map((_, i) => i + 1) : a.half ? ALL_NUMS.filter(k => k % 2 === a.half % 2) : ALL_NUMS;
+// 시험의 k번 문항이 어느 해 몇 번 문제인지 (내가 만든 시험지는 a.custom에 고른 순서대로)
+const qOf = (a, k) => a.custom ? a.custom[k - 1] : { y: a.y, n: k };
+const customMs = cnt => Math.max(10, Math.round(cnt * 100 / 30 / 5) * 5) * 60 * 1000;   // 30문항 100분 비율, 5분 단위
 const halfName = half => half ? `${half}부 (${half === 1 ? '홀수' : '짝수'}번)` : '';
-const examName = a => `${a.y}학년도${a.half ? ' ' + halfName(a.half) : ''}`;
-const maxScore = a => numsOf(a).reduce((s, k) => s + item(a.y, k).score, 0);
+const escT = t => String(t).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
+const examName = a => a.custom ? escT(a.title || '내가 만든 시험지') : `${a.y}학년도${a.half ? ' ' + halfName(a.half) : ''}`;
+const maxScore = a => numsOf(a).reduce((s, k) => { const q = qOf(a, k); return s + item(q.y, q.n).score; }, 0);
 const item = (y, n) => D[y][n - 1];
 const isMC = n => n <= 21;
 const fmtAns = (n, a) => (a === '' || a == null) ? '–' : (isMC(n) ? CIRC[a] : String(a));
@@ -311,7 +338,7 @@ async function histories() {
   const m = {};
   const push = (y, n, r) => (m[`${y}-${n}`] = m[`${y}-${n}`] || []).push(r);
   for (const a of await DB.all('att:')) {
-    if (a.kind === 'exam' && a.done) for (const k of numsOf(a)) push(a.y, k, { t: a.finishedAt, ok: a.result[k], att: a.id, kind: 'exam' });
+    if (a.kind === 'exam' && a.done) for (const k of numsOf(a)) { const q = qOf(a, k); push(q.y, q.n, { t: a.finishedAt, ok: a.result[k], att: a.id, kind: 'exam', k }); }
     if (a.kind === 'practice' && a.graded) push(a.y, a.n, { t: a.gradedAt, ok: a.correct, att: a.id, kind: 'practice', from: a.from });
   }
   for (const k in m) m[k].sort((x, y) => x.t - y.t);
@@ -322,7 +349,7 @@ const FROM = { year: '문항별', wrong: '오답노트' };
 const fromOf = x => x.kind === 'exam' ? '시험' : FROM[x.from] || '';
 // 1차 ○ 2차 ✕ … 칩 (누르면 그 풀이를 연다)
 function histChips(hs, n) {
-  return `<span class="hist">${(hs || []).map((x, i) => `<button class="hx ${x.ok ? 'o' : 'x'}" data-att="${x.att}" data-n="${n}" title="${fmtDate(x.t)}">${i + 1}차 ${x.ok ? '○' : '✕'}${fromOf(x) ? `<small>${fromOf(x)}</small>` : ''}</button>`).join('')}</span>`;
+  return `<span class="hist">${(hs || []).map((x, i) => `<button class="hx ${x.ok ? 'o' : 'x'}" data-att="${x.att}" data-n="${x.k || n}" title="${fmtDate(x.t)}">${i + 1}차 ${x.ok ? '○' : '✕'}${fromOf(x) ? `<small>${fromOf(x)}</small>` : ''}</button>`).join('')}</span>`;
 }
 // 목록 화면에서 연 문제는 끝나면 그 목록으로 돌아간다
 const setReturn = () => { try { sessionStorage.setItem('returnTo', location.hash); } catch (e) {} };
@@ -453,11 +480,12 @@ class Ink {
   snapshot() { this.undoStack.push(this.data.s.slice()); if (this.undoStack.length > 100) this.undoStack.shift(); this.redoStack = []; }
   undo() { if (!this.undoStack.length || this.readOnly) return; this.redoStack.push(this.data.s.slice()); this.data.s.splice(0, this.data.s.length, ...this.undoStack.pop()); this.redraw(); this.onChange && this.onChange(); }
   redo() { if (!this.redoStack.length || this.readOnly) return; this.undoStack.push(this.data.s.slice()); this.data.s.splice(0, this.data.s.length, ...this.redoStack.pop()); this.redraw(); this.onChange && this.onChange(); }
-  clear() { if (this.readOnly || !this.data.s.length) return; this.snapshot(); this.data.s.length = 0; this.redraw(); this.onChange && this.onChange(); }
+  clear() { if (this.readOnly || !this.data.s.length) return; this.snapshot(); const keep = this.data.s.filter(s => s.lk); this.data.s.splice(0, this.data.s.length, ...keep); this.redraw(); this.onChange && this.onChange(); }   // 고정한 풀이(lk)는 남김
   grow() { this.data.H += 1200; this.layout(); this.onChange && this.onChange(); }
   eraseAt([x, y]) {
     const R = 10;
     const keep = this.data.s.filter(s => {
+      if (s.lk) return true;   // 고정한 풀이
       const p = s.p;
       for (let i = 0; i < p.length; i += 3) {
         const dx = p[i] - x, dy = p[i + 1] - y;
@@ -682,13 +710,13 @@ async function route() {
     if (a === 'result') return result(b);
     if (a === 'review') return review(b, +c);
     if (a === 'practice' && !b) return practiceHome();
-    if (a === 'practice' && b === 'year' && !c) return practiceYears();
-    if (a === 'practice' && b === 'year') return practiceNums(+c);
+    if (a === 'practice' && b === 'year') return exportPage();
     if (a === 'practice' && b === 'unit' && !c) return practiceUnits();
     if (a === 'practice' && b === 'unit') return practiceUnitList(+c);
     if (a === 'solve') return solve(+b, +c);
     if (a === 'wrong') return wrongNote();
     if (a === 'export') return exportPage();
+    if (a === 'lab') return labRoute(b, c);
     home();
   } catch (e) { console.error(e); toast('오류: ' + e.message); }
 }
@@ -736,19 +764,19 @@ async function home() {
   for (const r of running) if (examLeft(r) <= 0) await finishExam(r);
   const live = running.filter(r => !r.done);
   const recent = atts.filter(a => a.kind === 'exam' && a.done).sort((x, y) => y.finishedAt - x.finishedAt).slice(0, 5);
-  const body = h(`<div>
+  const body = h(`<div class="home">
     <div class="exam-head">
       <div class="kicker">2021 ~ 2026학년도 3월 고1 전국연합학력평가</div>
       <div class="row"><span class="pill">제 2 교시</span><h1>수학 영역</h1><span class="pill">고 1</span></div>
     </div>
     ${live.map(r => `<div class="verdict" style="justify-content:space-between"><div class="info"><b>${examName(r)} 시험</b>이 ${r.pausedAt ? '일시정지되어 있습니다' : '진행 중입니다'} · 남은 시간 ${fmtClock(examLeft(r))}</div><button class="btn primary" data-resume="${r.id}">이어서 풀기</button></div>`).join('')}
     <div class="menu">
-      <button data-go="#/exam"><div class="no">1.</div><div class="name">시험보기</div><div class="desc">연도를 골라 30문항을 100분 동안, 또는 하프 모의고사(홀수번·짝수번 15문항)를 50분 동안 풉니다. 시간이 끝나면 바로 채점합니다.</div></button>
-      <button data-go="#/practice"><div class="no">2.</div><div class="name">연습하기</div><div class="desc">원하는 문항 하나를 골라 풀거나, 학년·단원별로 모아서 풉니다.</div></button>
-      <button data-go="#/wrong"><div class="no">3.</div><div class="name">오답노트</div><div class="desc">틀린 문제와 내가 쓴 풀이, 해설, 다시 푼 결과를 봅니다.</div></button>
-      <button data-go="#/export"><div class="no">4.</div><div class="name">파일 저장</div><div class="desc">원하는 문제를 골라 모의고사 양식의 한글 파일(.hwpx)로 저장합니다.</div></button>
+      <button data-go="#/exam"><div class="no">1.</div><div class="name">시험보기</div><div class="desc">시간 재고 실제 시험처럼</div></button>
+      <button data-go="#/practice"><div class="no">2.</div><div class="name">연습하기</div><div class="desc">문항·단원별로 골라 풀기</div></button>
+      <button data-go="#/wrong"><div class="no">3.</div><div class="name">오답노트</div><div class="desc">틀린 문제 다시 보기</div></button>
+      <button data-go="#/lab"><div class="no">4.</div><div class="name">실험실</div><div class="desc">칠판에서 작도하며 풀기</div></button>
     </div>
-    ${recent.length ? `<div class="h3">최근 시험 결과</div><div class="list">${recent.map(r => `<div class="item" data-go="#/result/${r.id}"><div class="main"><div class="t">${examName(r)}</div><div class="m">${fmtDate(r.finishedAt)} · ${r.correct}/${numsOf(r).length} 문항</div></div><div class="t">${r.score}점${r.half ? ` <span class="muted" style="font-size:13px">/ ${maxScore(r)}</span>` : ''}</div></div>`).join('')}</div>` : ''}
+    ${recent.length ? `<div class="h3">최근 시험 결과</div><div class="list">${recent.map(r => `<div class="item" data-go="#/result/${r.id}"><div class="main"><div class="t">${examName(r)}</div><div class="m">${fmtDate(r.finishedAt)} · ${r.correct}/${numsOf(r).length} 문항</div></div><div class="t">${r.score}점${r.half || r.custom ? ` <span class="muted" style="font-size:13px">/ ${maxScore(r)}</span>` : ''}</div></div>`).join('')}</div>` : ''}
     <div style="margin-top:28px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
       ${FS.ok ? '<button class="btn small" data-fs></button>' : ''}
       <button class="btn small" data-backup>기록 내보내기</button>
@@ -761,7 +789,7 @@ async function home() {
   });
   body.querySelector('[data-backup]').onclick = backup;
   body.querySelector('[data-restore]').onchange = e => restore(e.target.files[0]);
-  const el = h(`<div style="height:100%"><div class="scroll" style="height:100%"><div class="page"><div class="sheet"></div></div></div></div>`);
+  const el = h(`<div class="home-wrap" style="height:100%"><div class="scroll" style="height:100%"><div class="page"><div class="sheet"></div></div></div></div>`);
   el.querySelector('.sheet').appendChild(body);
   mount(el);
 }
@@ -795,7 +823,6 @@ async function examPick() {
   const body = h(`<div>
     <div class="section-tag">시험보기</div>
     <p class="h2">연도와 시험 종류를 고르세요</p>
-    <p class="muted" style="margin-top:-6px">전체는 30문항 100분, 하프 모의고사는 1부(홀수번)·2부(짝수번) 15문항씩 50분입니다. 시작하면 화면을 나가도 시간이 계속 흐르고, 시간이 끝나면 풀이가 멈추고 바로 채점됩니다.</p>
     <div class="grid-years">${YEARS.map(y => {
       const cell = half => {
         const mine = atts.filter(a => a.y === y && (a.half || 0) === half);
@@ -806,7 +833,7 @@ async function examPick() {
         const sub = half ? (half === 1 ? '홀수번' : '짝수번') : '30문항';
         return `<button class="${live ? 'live' : ''}" data-y="${y}" data-half="${half}"><b>${label}</b>${sub}<br>${live ? '진행 중' : best != null ? `최고 ${best}점` : `${half ? 50 : 100}분`}</button>`;
       };
-      return `<div class="year-card"><div class="y">${y}</div><div class="muted">학년도 3월</div><div class="halves">${cell(0)}${cell(1)}${cell(2)}</div></div>`;
+      return `<div class="year-card"><div class="y">${y} 3월</div><div class="halves">${cell(0)}${cell(1)}${cell(2)}</div></div>`;
     }).join('')}</div>
   </div>`);
   body.addEventListener('click', e => {
@@ -839,7 +866,7 @@ async function finishExam(a) {
   let score = 0, correct = 0;
   a.result = {};
   for (const n of numsOf(a)) {
-    const it = item(a.y, n);
+    const q = qOf(a, n), it = item(q.y, q.n);
     const ok = a.answers[n] !== undefined && a.answers[n] !== '' && +a.answers[n] === it.ans;
     a.result[n] = ok;
     if (ok) { score += it.score; correct++; }
@@ -863,9 +890,9 @@ async function examRun(id) {
   const sw = new Stopwatch();
   const el = h(`<div style="display:flex;flex-direction:column;height:100%"></div>`);
   const right = h(`<span style="display:flex;gap:8px;align-items:center"><span class="timer">--:--</span><button class="btn" data-pause></button><button class="btn omr-toggle" data-omr>답안지</button><button class="btn primary" data-submit>답안 제출</button></span>`);
-  const bar = topbar(`${examName(a)} 3월 고1 수학 영역`, { back: '#/', right });
+  const bar = topbar(a.custom ? examName(a) : `${examName(a)} 3월 고1 수학 영역`, { back: '#/', right });
   el.appendChild(bar);
-  const work = h(`<div class="work"><div class="pane"></div><div class="omr"><h4>답 안 지</h4></div></div>`);
+  const work = h(`<div class="work"><div class="pane"></div><div class="omr"><div class="hd"><button data-prev title="이전 문제">◀</button><h4>답 안 지</h4><button data-next title="다음 문제">▶</button></div></div></div>`);
   el.appendChild(work);
   const pane = work.querySelector('.pane'), omr = work.querySelector('.omr');
 
@@ -900,11 +927,30 @@ async function examRun(id) {
     omrBtn.textContent = `답안지 ${done}/${NUMS.length}`;
     for (const k of NUMS) {
       const v = a.answers[k];
-      const r = h(`<div class="r ${k === n ? 'cur' : ''}" data-k="${k}"><span class="n">${k}</span>${isMC(k) ? [1, 2, 3, 4, 5].map(i => `<span class="b ${v === i ? 'on' : ''}">${i}</span>`).join('') : `<span class="sbox">${v === '' || v == null ? '' : v}</span>`}</div>`);
+      const r = h(`<div class="r ${k === n ? 'cur' : ''}" data-k="${k}"><span class="n">${k}</span>${isMC(qOf(a, k).n) ? [1, 2, 3, 4, 5].map(i => `<span class="b ${v === i ? 'on' : ''}">${i}</span>`).join('') : `<span class="sbox">${v === '' || v == null ? '' : v}</span>`}</div>`);
       omr.appendChild(r);
     }
   }
-  omr.addEventListener('click', e => { const r = e.target.closest('.r'); if (r) { show(+r.dataset.k); omr.classList.remove('open'); } });
+  // 답안지: 동그라미를 누르면 답, 주관식 칸을 누르면 숫자 입력, 번호를 누르면 그 문제로
+  const setAns = (k, v) => { a.answers[k] = v; scheduleSave(); renderOMR(); };
+  omr.addEventListener('click', e => {
+    if (e.target.closest('.hd')) { const b = e.target.closest('button'); if (b && !b.disabled) (b.dataset.prev != null ? NAV.prev : NAV.next)(); return; }
+    const r = e.target.closest('.r'); if (!r) return;
+    const k = +r.dataset.k, bub = e.target.closest('.b'), box = e.target.closest('.sbox');
+    if (bub && !stopped) { const i = +bub.textContent; setAns(k, a.answers[k] === i ? '' : i); if (k !== n) show(k); return; }
+    if (box && !stopped) {
+      if (k !== n) show(k);
+      const cell = omr.querySelector(`.r[data-k="${k}"] .sbox`); if (!cell || cell.querySelector('input')) return;
+      const v = a.answers[k];
+      const inp = h(`<input inputmode="numeric" maxlength="3" value="${v === '' || v == null ? '' : v}">`);
+      cell.textContent = ''; cell.appendChild(inp); inp.focus(); inp.select();
+      inp.oninput = () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 3); a.answers[k] = inp.value === '' ? '' : +inp.value; scheduleSave(); };
+      const done = () => renderOMR();
+      inp.onblur = done; inp.onkeydown = ev => { if (ev.key === 'Enter') inp.blur(); };
+      return;
+    }
+    show(k); omr.classList.remove('open');
+  });
   const omrBtn = right.querySelector('[data-omr]');
   omrBtn.onclick = () => omr.classList.toggle('open');
 
@@ -914,25 +960,23 @@ async function examRun(id) {
     if (paperObj) paperObj.ink.destroy();
     pane.innerHTML = '';
     a.ink[k] = a.ink[k] || { H: 0, s: [] };
-    paperObj = makePaper(a.y, k, a.ink[k], scheduleSave);
+    const q = qOf(a, k);
+    paperObj = makePaper(q.y, q.n, a.ink[k], scheduleSave);
     pane.appendChild(toolbar(() => paperObj.ink));
     pane.appendChild(paperObj.scroller);
-    const ab = h(`<div class="answerbar"><span class="qn">${k}번 답</span></div>`);
-    ab.appendChild(answerInput(k, a.answers[k], v => { a.answers[k] = v; scheduleSave(); renderOMR(); }, stopped));
     const i = NUMS.indexOf(k);
     NAV = { prev: i > 0 ? () => show(NUMS[i - 1]) : null, next: i < NUMS.length - 1 ? () => show(NUMS[i + 1]) : null };
-    ab.appendChild(qnav(NAV.prev, NAV.next));
-    ab.appendChild(h(`<span class="grow"></span>`));
-    if (hasGgb(a.y, k)) ab.appendChild(ggbButton(a.y, k));
-    pane.appendChild(ab);
+    omr.querySelector('[data-prev]').disabled = !NAV.prev; omr.querySelector('[data-next]').disabled = !NAV.next;
+    if (hasGgb(q.y, q.n)) pane.firstChild.appendChild(ggbButton(q.y, q.n));   // 그림 확인하기는 필기 도구 줄 끝에
     if (stopped) paperObj.ink.readOnly = true;
     renderOMR();
+    const cur = omr.querySelector('.r.cur'); if (cur) cur.scrollIntoView({ block: 'nearest' });
   }
 
   async function stop(timeUp) {
     if (stopped) return;
     accrue(); stopped = true;
-    clearInterval(tick); clearTimeout(saveT); pauseCover.remove(); pauseBtn.disabled = true;
+    clearInterval(tick); clearTimeout(saveT); pauseCover.remove(); pauseBtn.disabled = true; omr.classList.add('stopped');
     if (paperObj) paperObj.ink.readOnly = true;
     work.style.position = 'relative';
     work.appendChild(h(`<div class="overlay-stop">${timeUp ? '시험 시간이 끝났습니다' : '답안을 제출했습니다'}</div>`));
@@ -967,19 +1011,17 @@ async function result(id) {
   const wrongs = NUMS.filter(k => !a.result[k]);
   const total = Object.values(a.times).reduce((s, v) => s + v, 0);
   const body = h(`<div>
-    <div class="exam-head"><div class="kicker">${a.y}학년도 3월 고1 전국연합학력평가${a.half ? ` · 하프 모의고사 ${halfName(a.half)}` : ''}</div><div class="row"><h1 style="font-size:30px">채점 결과</h1></div></div>
+    <div class="exam-head"><div class="kicker">${a.custom ? `${examName(a)} · ${NUMS.length}문항` : `${a.y}학년도 3월 고1 전국연합학력평가${a.half ? ` · 하프 모의고사 ${halfName(a.half)}` : ''}`}</div><div class="row"><h1 style="font-size:30px">채점 결과</h1></div></div>
     <div class="score-big"><span class="v">${a.score}</span><span class="u">점 / ${maxScore(a)}</span></div>
     <div class="stats"><span>맞힌 문항 <b>${a.correct}</b> / ${NUMS.length}</span><span>총 풀이 시간 <b>${fmtTime(total)}</b></span><span>${fmtDate(a.finishedAt)}</span></div>
     <div class="actions">
-      <button class="btn" data-key>정답표 보기</button>
       <button class="btn" data-sol>풀이 보기</button>
       <button class="btn primary" data-note ${wrongs.length ? '' : 'disabled'}>오답노트 담기 (${wrongs.length}문항)</button>
     </div>
     <table class="res"><thead><tr><th>번호</th><th>배점</th><th>단원</th><th>내 답</th><th>정답</th><th>채점</th><th>소요 시간</th></tr></thead><tbody>
-    ${NUMS.map(k => { const it = item(a.y, k); const ok = a.result[k]; return `<tr class="row" data-k="${k}"><td><b>${k}</b></td><td>${it.score}</td><td>${unitShort(it.unit)}</td><td>${fmtAns(k, a.answers[k])}</td><td>${fmtAns(k, it.ans)}</td><td class="${ok ? 'o' : 'x'}">${ok ? '○' : '✕'}</td><td>${fmtTime(a.times[k])}</td></tr>`; }).join('')}
+    ${NUMS.map(k => { const q = qOf(a, k), it = item(q.y, q.n); const ok = a.result[k]; return `<tr class="row" data-k="${k}"><td><b>${k}</b>${a.custom ? `<div class="muted" style="font-size:12px">${q.y}-${q.n}번</div>` : ''}</td><td>${it.score}</td><td>${unitShort(it.unit)}</td><td>${fmtAns(q.n, a.answers[k])}</td><td>${fmtAns(q.n, it.ans)}</td><td class="${ok ? 'o' : 'x'}">${ok ? '○' : '✕'}</td><td>${fmtTime(a.times[k])}</td></tr>`; }).join('')}
     </tbody></table>
   </div>`);
-  body.querySelector('[data-key]').onclick = () => answerKey(a.y, NUMS);
   body.querySelector('[data-sol]').onclick = () => go(`#/review/${a.id}/${NUMS[0]}`);
   body.querySelector('[data-note]').onclick = async () => {
     for (const k of wrongs) await addWrong(a, k);
@@ -998,7 +1040,8 @@ function answerKey(y, nums = ALL_NUMS) {
 }
 
 async function addWrong(a, k) {
-  await DB.set(`wrong:${a.y}-${k}`, { y: a.y, n: k, att: a.id, addedAt: Date.now() });
+  const q = qOf(a, k);
+  await DB.set(`wrong:${q.y}-${q.n}`, { y: q.y, n: q.n, att: a.id, k, addedAt: Date.now() });
 }
 
 // ---------- 풀이 보기 (채점 후) ----------
@@ -1007,21 +1050,22 @@ async function review(attId, n) {
   if (!a) return go('#/');
   const isExam = a.kind === 'exam';
   n = n || a.n;
-  const it = item(a.y, n);
+  const q = isExam ? qOf(a, n) : { y: a.y, n: a.n };
+  const it = item(q.y, q.n);
   const ok = isExam ? a.result[n] : a.correct;
-  const inNote = await DB.get(`wrong:${a.y}-${n}`);
+  const inNote = await DB.get(`wrong:${q.y}-${q.n}`);
   a.ink[n] = a.ink[n] || { H: 0, s: [] };
   let saveT = null;
   const scheduleSave = () => { clearTimeout(saveT); saveT = setTimeout(() => saveAtt(a), 600); };
 
-  const hs = (await histories())[`${a.y}-${n}`] || [];
+  const hs = (await histories())[`${q.y}-${q.n}`] || [];
   const nth = hs.findIndex(x => x.att === a.id) + 1;
   const NUMS = isExam ? numsOf(a) : [n];
   const i = NUMS.indexOf(n);
   const back = isExam ? `#/result/${a.id}` : returnTo();
   const nav = isExam ? `<span style="display:flex;gap:6px"><button class="btn" data-prev ${i === 0 ? 'disabled' : ''}>◀</button><button class="btn" data-next ${i === NUMS.length - 1 ? 'disabled' : ''}>▶</button></span>` : '';
   const el = h(`<div style="display:flex;flex-direction:column;height:100%"></div>`);
-  const bar = topbar(`${a.y}학년도 3월 ${n}번 · ${nth ? `${nth}차 ` : ''}풀이 보기`, { back, right: nav });
+  const bar = topbar(`${q.y}학년도 3월 ${q.n}번 · ${nth ? `${nth}차 ` : ''}풀이 보기`, { back, right: nav });
   el.appendChild(bar);
   if (isExam) {
     const pv = () => location.replace(`#/review/${a.id}/${NUMS[i - 1]}`), nx = () => location.replace(`#/review/${a.id}/${NUMS[i + 1]}`);
@@ -1030,12 +1074,12 @@ async function review(attId, n) {
   }
   const rv = h(`<div class="review"><div class="left"></div><div class="right"></div></div>`);
   el.appendChild(rv);
-  const p = makePaper(a.y, n, a.ink[n], scheduleSave);
+  const p = makePaper(q.y, q.n, a.ink[n], scheduleSave);
   rv.querySelector('.left').append(toolbar(() => p.ink), p.scroller);
   const R = rv.querySelector('.right');
   R.innerHTML = `
     <div class="verdict"><div class="mark ${ok ? 'o' : 'x'}">${ok ? '○' : '✕'}</div>
-      <div class="info">내 답 <b>${fmtAns(n, a.answers[n])}</b> · 정답 <b>${fmtAns(n, it.ans)}</b><br>
+      <div class="info">내 답 <b>${fmtAns(q.n, a.answers[n])}</b> · 정답 <b>${fmtAns(q.n, it.ans)}</b><br>
       ${it.score}점 · ${unitName(it.unit)}</div>
       <div class="clock"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="24" cy="27" r="16"/><path d="M24 27V18M19 5h10M24 5v6M37 13l3-3"/></svg>
         <div><div class="l">풀이 시간</div><div class="v">${fmtClock(a.times[n])}</div></div></div></div>
@@ -1043,16 +1087,28 @@ async function review(attId, n) {
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
       <button class="btn ${inNote ? '' : 'primary'}" data-note>${inNote ? '오답노트에서 빼기' : '오답노트 담기'}</button>
       <button class="btn" data-again>다시 풀기</button>
+      <button class="btn" data-lock></button>
     </div>
-    <p class="muted" style="font-size:13px;margin-top:-6px">왼쪽 내 풀이는 고칠 수 있고, 고친 내용은 바로 저장됩니다.</p>
-    ${hasGgb(a.y, n) ? `<div class="sol" style="margin-bottom:18px"><div class="label">그 림</div><div class="ggb-box" data-ggb></div></div>` : ''}
+    ${hasGgb(q.y, q.n) ? `<div class="sol" style="margin-bottom:18px"><div class="label">그 림</div><div class="ggb-box" data-ggb></div></div>` : ''}
     <div class="sol"><div class="label">해 설</div>${it.s.map(s => `<img src="${s.src}" alt="해설">`).join('')}</div>`;
-  if (hasGgb(a.y, n)) mountGgb(R.querySelector('[data-ggb]'), a.y, n);   // 해설에서는 암호 없이 바로
+  if (hasGgb(q.y, q.n)) mountGgb(R.querySelector('[data-ggb]'), q.y, q.n);   // 해설에서는 암호 없이 바로
   R.querySelector('[data-note]').onclick = async e => {
-    if (await DB.get(`wrong:${a.y}-${n}`)) { await DB.del(`wrong:${a.y}-${n}`); e.target.textContent = '오답노트 담기'; e.target.classList.add('primary'); toast('오답노트에서 뺐습니다'); }
+    if (await DB.get(`wrong:${q.y}-${q.n}`)) { await DB.del(`wrong:${q.y}-${q.n}`); e.target.textContent = '오답노트 담기'; e.target.classList.add('primary'); toast('오답노트에서 뺐습니다'); }
     else { await addWrong(a, n); e.target.textContent = '오답노트에서 빼기'; e.target.classList.remove('primary'); toast('오답노트에 담았습니다'); }
   };
-  R.querySelector('[data-again]').onclick = () => go(`#/solve/${a.y}/${n}`);
+  R.querySelector('[data-again]').onclick = () => go(`#/solve/${q.y}/${q.n}`);
+  // 내 풀이 고정하기: 지금 있는 글씨(시험 때 쓴 풀이)는 지우개·모두 지우기·되돌리기로 지워지지 않음. 그 위에 새로 쓰는 것은 됨
+  const lockBtn = R.querySelector('[data-lock]');
+  const locked = () => a.ink[n].s.some(s => s.lk);
+  const paintLock = () => { lockBtn.textContent = locked() ? '🔒 내 풀이 고정됨 (풀기)' : '내 풀이 고정하기'; lockBtn.classList.toggle('primary', locked()); };
+  lockBtn.onclick = () => {
+    const on = !locked();
+    if (!on && !confirm('고정을 풀면 시험 때 쓴 글씨도 지울 수 있게 됩니다. 풀까요?')) return;
+    a.ink[n].s.forEach(s => { if (on) s.lk = 1; else delete s.lk; });
+    p.ink.undoStack = []; p.ink.redoStack = [];
+    saveAtt(a); paintLock(); toast(on ? '내 풀이를 고정했습니다' : '고정을 풀었습니다');
+  };
+  paintLock();
   mount(el, () => { clearTimeout(saveT); saveAtt(a); p.ink.destroy(); });
 }
 
@@ -1061,26 +1117,12 @@ function practiceHome() {
   const body = h(`<div>
     <div class="section-tag">연습하기</div>
     <div class="menu" style="margin-top:8px">
-      <button data-go="#/practice/year"><div class="no">가.</div><div class="name">문항별 선택</div><div class="desc">연도를 고른 뒤 풀고 싶은 문항 번호를 고릅니다.</div></button>
+      <button data-go="#/practice/year"><div class="no">가.</div><div class="name">문항별 선택</div><div class="desc">문제를 골라 한글 파일로 저장하거나, 시험지를 만들어 풉니다.</div></button>
       <button data-go="#/practice/unit"><div class="no">나.</div><div class="name">단원별 선택</div><div class="desc">중학교 1·2·3학년 단원별로 모인 문항을 풉니다. (풀이에 쓰인 내용 중 가장 높은 학년 기준)</div></button>
     </div>
   </div>`);
   body.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) go(g.dataset.go); });
   mount(screen('연습하기', {}, body));
-}
-function practiceYears() {
-  const body = h(`<div><div class="section-tag">문항별 선택</div><p class="h2">연도를 고르세요</p><div class="grid-years">${YEARS.map(y => `<button class="year-card" data-y="${y}"><div class="y">${y}</div><div class="muted">학년도 3월</div></button>`).join('')}</div></div>`);
-  body.addEventListener('click', e => { const b = e.target.closest('[data-y]'); if (b) go('#/practice/year/' + b.dataset.y); });
-  mount(screen('문항별 선택', { back: '#/practice' }, body));
-}
-async function practiceNums(y) {
-  setReturn();
-  const H = await histories();
-  const body = h(`<div><div class="section-tag">${y}학년도 3월</div><p class="h2">풀 문항을 고르세요</p>
-    <div class="nums">${ALL_NUMS.map(k => { const l = (H[`${y}-${k}`] || []).slice(-1)[0]; return `<button class="num" data-k="${k}">${k}${l ? `<span class="mk ${l.ok ? 'o' : 'x'}">${l.ok ? '○' : '✕'}</span>` : ''}</button>`; }).join('')}</div>
-    <p class="muted" style="margin-top:14px;font-size:13px">○ ✕ 는 가장 최근에 채점한 결과입니다.</p></div>`);
-  body.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) go(`#/solve/${y}/${b.dataset.k}`); });
-  mount(screen(`${y}학년도 문항 선택`, { back: '#/practice/year' }, body));
 }
 function practiceUnits() {
   const count = u => YEARS.reduce((s, y) => s + D[y].filter(it => it.unit === u).length, 0);
@@ -1188,7 +1230,7 @@ async function wrongNote() {
         if (cb) { cb.checked ? picked.add(key(e)) : picked.delete(key(e)); syncBar(); return; }
         if (ev.target.closest('[data-again]')) return go(`#/solve/${e.y}/${e.n}`);
         if (ev.target.closest('[data-del]')) { if (confirm('오답노트에서 뺄까요?')) DB.del(`wrong:${e.y}-${e.n}`).then(() => { entries.splice(entries.indexOf(e), 1); picked.delete(key(e)); render(); }); return; }
-        if (a) go(`#/review/${a.id}/${e.n}`); else toast('원래 풀이 기록을 찾을 수 없습니다');
+        if (a) go(`#/review/${a.id}/${e.k || e.n}`); else toast('원래 풀이 기록을 찾을 수 없습니다');
       };
       list.appendChild(row);
     }
@@ -1209,7 +1251,7 @@ async function wrongNote() {
         // 화면에 보이는 순서대로, 문제 그림에 내 필기를 겹쳐 한글 파일로
         const chosen = entries.filter(e => picked.has(key(e)));
         const items = [];
-        for (const e of chosen) { const a = atts[e.att]; items.push({ y: e.y, n: e.n, src: await inkedProblem(e.y, e.n, a && a.ink && a.ink[e.n]) }); }
+        for (const e of chosen) { const a = atts[e.att]; items.push({ y: e.y, n: e.n, src: await inkedProblem(e.y, e.n, a && a.ink && a.ink[e.k || e.n]) }); }
         const blob = await HWPX.build(items, {
           title: '오답노트', subtitle: `고1 3월 전국연합학력평가 · 내 풀이 포함 ${items.length}문항`,
           withAnswers: body.querySelector('[data-pans]').checked, withSolutions: body.querySelector('[data-psol]').checked,
@@ -1340,9 +1382,9 @@ async function exportPage() {
   let year = YEARS[YEARS.length - 1], found = null;
   const has = (y, n) => sel.some(s => s.y === y && s.n === n);
   const EXAMPLES = ['4점 문제만', '2024~2026 21번~30번', '3학년 이차함수', '오답노트 4점', '도형의 닮음 단답형', '안 푼 문제 랜덤 10문제'];
-  const body = h(`<div>
-    <div class="section-tag">파일 저장</div>
-    <p class="h2">문제를 골라 한글 파일로 저장</p>
+  const body = h(`<div class="exp">
+    <div class="section-tag">문항별 선택</div>
+    <p class="h2">한글 파일로 저장</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
       <div class="field"><span class="muted">시험지 제목</span><input type="text" data-title value="수학 영역"></div>
       <div class="field"><span class="muted">윗줄 문구</span><input type="text" data-sub value="고1 3월 전국연합학력평가 기출 모음"></div>
@@ -1353,31 +1395,27 @@ async function exportPage() {
     <div class="qres" data-qres></div>
     <div class="h3">2. 직접 고르기</div>
     <div class="chips" data-years>${YEARS.map(y => `<button class="chip" data-y="${y}">${y}</button>`).join('')}</div>
-    <div class="nums" style="margin-top:12px" data-nums></div>
     <div class="bulk">
-      <button data-allyear></button>
+      <select data-allyear></select>
       <button data-wrong>오답노트 문제 모두 추가</button>
       <select data-unit><option value="">단원 전체 추가 ▾</option>${GRADES.map(g => `<optgroup label="${g}학년">${unitsOf(g).map(u => `<option value="${u}">${unitName(u)}</option>`).join('')}</optgroup>`).join('')}</select>
     </div>
+    <div class="nums" style="margin-top:12px" data-nums></div>
     <div class="h3">3. 고른 문제 <span class="muted" data-count></span> <button class="btn small" data-clear style="float:right">모두 비우기</button></div>
     <div class="sel-list" data-list></div>
-    <div class="h3">4. 포함할 내용</div>
-    <label style="margin-right:18px"><input type="checkbox" data-ans checked> 정답</label>
-    <label><input type="checkbox" data-sol checked> 해설</label>
-    <div style="margin-top:22px;display:flex;justify-content:flex-end"><button class="btn primary" data-make>한글 파일(.hwpx)로 저장</button></div>
+    <div style="margin-top:22px;display:flex;justify-content:flex-end;gap:10px"><button class="btn primary" data-make>한글 파일(.hwpx)로 저장</button><button class="btn primary" data-exam>시험지 만들기</button></div>
     <div class="progress" hidden><div></div></div>
-    <p class="muted" style="font-size:13px">평가원(수능) 수학 문제지 양식(A4, 2단)으로 만들어지며, 문항 번호는 고른 순서대로 1번부터 다시 매겨집니다. 한컴오피스 한글 2014 이상에서 열 수 있습니다.</p>
   </div>`);
   const nums = body.querySelector('[data-nums]'), list = body.querySelector('[data-list]'), qres = body.querySelector('[data-qres]'), qin = body.querySelector('[data-q]');
   const render = () => {
     body.querySelectorAll('[data-y]').forEach(c => c.classList.toggle('on', +c.dataset.y === year));
-    body.querySelector('[data-allyear]').textContent = `${year}학년도 전체 추가`;
+    body.querySelector('[data-allyear]').innerHTML = `<option value="">${year} 전체 추가 ▾</option><option value="all">${year} 전체 추가</option><option value="odd">${year} 홀수번만 추가</option><option value="even">${year} 짝수번만 추가</option>`;
     nums.innerHTML = ALL_NUMS.map(k => `<button class="num ${has(year, k) ? 'sel' : ''}" data-k="${k}">${k}</button>`).join('');
     body.querySelector('[data-count]').textContent = `(${sel.length}문항)`;
     list.innerHTML = sel.length ? '' : '<div class="r muted">위에서 문제를 고르세요.</div>';
     sel.forEach((s, i) => {
       const it = item(s.y, s.n);
-      const r = h(`<div class="r"><span class="k">${i + 1}.</span><span class="t">${s.y}학년도 ${s.n}번 · ${it.score}점 · ${unitShort(it.unit)}</span><button class="btn small" data-up ${i ? '' : 'disabled'}>↑</button><button class="btn small" data-down ${i < sel.length - 1 ? '' : 'disabled'}>↓</button><button class="btn small" data-x>✕</button></div>`);
+      const r = h(`<div class="r"><span class="k">${i + 1}.</span><span class="t">${s.y} ${s.n}번 · ${it.score}점 · ${unitShort(it.unit)}</span><button class="btn small" data-up ${i ? '' : 'disabled'}>↑</button><button class="btn small" data-down ${i < sel.length - 1 ? '' : 'disabled'}>↓</button><button class="btn small" data-x>✕</button></div>`);
       r.querySelector('[data-up]').onclick = () => { [sel[i - 1], sel[i]] = [sel[i], sel[i - 1]]; keep(); render(); };
       r.querySelector('[data-down]').onclick = () => { [sel[i + 1], sel[i]] = [sel[i], sel[i + 1]]; keep(); render(); };
       r.querySelector('[data-x]').onclick = () => { sel.splice(i, 1); keep(); render(); };
@@ -1417,7 +1455,8 @@ async function exportPage() {
     if (has(year, k)) sel = sel.filter(s => !(s.y === year && s.n === k)); else add(year, k);
     keep(); render();
   };
-  body.querySelector('[data-allyear]').onclick = () => { for (let k = 1; k <= 30; k++) add(year, k); keep(); render(); };
+  // 연도 전체 / 홀수번만 / 짝수번만 추가
+  body.querySelector('[data-allyear]').onchange = e => { const v = e.target.value; if (!v) return; for (let k = 1; k <= 30; k++) if (v === 'all' || (v === 'odd') === (k % 2 === 1)) add(year, k); keep(); render(); };
   body.querySelector('[data-wrong]').onclick = async () => {
     const w = (await DB.all('wrong:')).sort((a, b) => a.y - b.y || a.n - b.n);
     if (!w.length) return toast('오답노트가 비어 있습니다');
@@ -1437,7 +1476,7 @@ async function exportPage() {
       const title = body.querySelector('[data-title]').value.trim() || '수학 영역';
       const blob = await HWPX.build(sel, {
         title, subtitle: body.querySelector('[data-sub]').value.trim(),
-        withAnswers: body.querySelector('[data-ans]').checked, withSolutions: body.querySelector('[data-sol]').checked,
+        withAnswers: true, withSolutions: true,   // 문제 뒤에 정답과 해설을 항상 넣음
         onProgress: f => { prog.firstElementChild.style.width = Math.round(f * 100) + '%'; },
       });
       window.__lastHwpx = blob;
@@ -1446,8 +1485,18 @@ async function exportPage() {
     } catch (err) { console.error(err); alert('파일을 만들지 못했습니다: ' + err.message); }
     btn.disabled = false; btn.textContent = '한글 파일(.hwpx)로 저장'; prog.hidden = true;
   };
+  // 시험지 만들기: 고른 문제만으로 시험 (30문항 100분 비율로 시간)
+  body.querySelector('[data-exam]').onclick = () => {
+    if (!sel.length) return toast('문제를 먼저 고르세요');
+    const title = body.querySelector('[data-title]').value.trim() || '내가 만든 시험지';
+    const probe = { custom: sel.slice(), title }, mins = customMs(sel.length) / 60000;
+    modal(`<h3>${escT(title)} 시험을 시작할까요?</h3><p>시험 시간 <b>${mins}분</b> · ${sel.length}문항 · ${maxScore(probe)}점 만점</p><p class="muted">고른 순서대로 1번부터 풉니다. 시작하면 타이머가 멈추지 않습니다.</p>`, [['취소'], ['시작하기', async () => {
+      const a = { id: uid(), kind: 'exam', custom: sel.map(s => ({ y: s.y, n: s.n })), title, created: Date.now(), endsAt: Date.now() + customMs(sel.length), done: false, answers: {}, times: {}, ink: {}, cur: 1 };
+      await saveAtt(a); go('#/exam/run/' + a.id);
+    }, true]]);
+  };
   render();
-  mount(screen('파일 저장', {}, body));
+  mount(screen('문항별 선택', { back: '#/practice' }, body));
 }
 
 // ---------- 시작 ----------
