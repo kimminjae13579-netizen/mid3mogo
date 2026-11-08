@@ -45,7 +45,11 @@
 .lab-host{flex:1;position:relative;background:#fff;overflow:hidden}
 .lab-fab{position:absolute;z-index:35;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;border:2px solid var(--line);background:#fff;box-shadow:0 3px 12px rgba(0,0,0,.25);touch-action:none;display:flex;align-items:center;justify-content:center;padding:0;cursor:grab;user-select:none;transition:opacity .2s}
 .lab-fab svg{width:30px;height:30px;pointer-events:none}
-.lab-fab.dim{opacity:.22}
+.lab-fab.dim,.lab-ur.dim{opacity:.22}
+.lab-ur{position:absolute;z-index:34;display:flex;gap:8px;transform:translateX(-50%);transition:opacity .2s}
+.lab-ur.hide{display:none}
+.lab-ur button{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:20px;line-height:1;padding:0;touch-action:manipulation}
+.lab-ur button:disabled{opacity:.35}
 .lab-fab.open{background:#e3e9f4}
 .lab-ring{position:absolute;z-index:36;pointer-events:none;animation:labpop .06s ease-out}
 .lab-ring g{pointer-events:auto;cursor:pointer}
@@ -72,12 +76,13 @@
 .lab-sheet h4{margin:0;font-family:var(--serif);letter-spacing:4px;font-size:15px}
 .lab-sheet .flt label{font-size:12px;display:flex;align-items:center;gap:3px;color:var(--sub)}
 .lab-sheet [data-rows]{display:flex;flex-wrap:wrap;gap:4px}
-.lab-sheet .r{display:flex;align-items:center;gap:2px;padding:3px 7px 3px 2px;border:1px solid var(--soft);border-radius:4px;cursor:pointer;background:#fff}
+.lab-sheet .r{display:flex;align-items:center;gap:2px;padding:3px 6px 3px 2px;min-width:74px;border:1px solid var(--soft);border-radius:4px;cursor:pointer;background:#fff}
 .lab-sheet .r:hover{background:var(--hl)}
 .lab-sheet .r.cur{background:#e3e9f4;border-color:#9fb3d6}
-.lab-sheet .star{border:0;background:transparent;font-size:22px;line-height:1;color:#c4c0b6;padding:0 2px}
+.lab-sheet .star{border:0;background:transparent;font-size:16px;line-height:1;color:#c4c0b6;padding:0 2px}
 .lab-sheet .star.on{color:#e0a100}
-.lab-sheet .n{font-family:var(--serif);font-weight:700;font-size:20px;min-width:24px;text-align:center}
+.lab-sheet .n{font-family:var(--serif);font-weight:700;font-size:20px;min-width:24px;text-align:center;flex:1;padding-right:12px}
+.lab-namelab{font-weight:700;font-size:17px;color:var(--ink)}
 .lab-new{border:1.5px dashed var(--line);background:var(--paper);padding:18px;width:100%;font-family:var(--serif);font-weight:700;font-size:19px;margin-bottom:14px;border-radius:2px}
 .lab-new:hover{background:var(--hl)}
 @media (max-width:900px){
@@ -133,7 +138,7 @@ async function labEdit(id) {
   const EXAMPLES = ['4점 문제만', '2024~2026 21번~30번', '3학년 이차함수', '도형의 닮음', '2학년 도형의 성질 4점'];
   const body = h(`<div>
     <div class="section-tag">실험실 · ${old ? '문제 고치기' : '문제 만들기'}</div>
-    <div class="field"><span class="muted">이름</span><input type="text" data-title value="${old ? esc(old.title) : ''}" placeholder="예: 3학년 원의 성질 수업"></div>
+    <div class="field"><span class="lab-namelab">이름</span><input type="text" data-title value="${old ? esc(old.title) : ''}"></div>
     <div class="h3">1. 원하는 문제를 말로 찾기</div>
     <div class="query"><input type="text" data-q placeholder="예: 2023~2026 4점 문제만 / 3학년 삼각비"><button class="btn" data-qgo>찾기</button></div>
     <div class="examples">${EXAMPLES.map(x => `<button data-ex>${x}</button>`).join('')}</div>
@@ -239,7 +244,7 @@ async function labView(id) {
   // 왼쪽: 문제 + 그 아래 가로 답안지 / 오른쪽 전부: 칠판
   const lab = h(`<div class="lab">
     <div class="lab-q"><div class="lab-qhead"><span class="t"></span><button class="btn small lab-copy" data-copy>⧉ 그림 복사하기</button></div><div class="lab-qimg"><div class="wrap"><img alt="문제"></div></div>
-      <div class="lab-sheet"><div class="hd"><h4>답안지</h4><span class="flt"><label><input type="checkbox" data-only> ★만 보기</label></span></div><div data-rows></div></div>
+      <div class="lab-sheet"><div class="hd"><h4>답안지</h4></div><div data-rows></div></div>
     </div>
     <div class="lab-b"></div>
   </div>`);
@@ -259,7 +264,6 @@ async function labView(id) {
     });
     if (!rows.children.length) rows.innerHTML = '<span class="muted" style="font-size:12px">별을 누른 문제가 없습니다</span>';
   }
-  lab.querySelector('[data-only]').onchange = e => { onlyFav = e.target.checked; renderSheet(); };
 
   async function show(i) {
     if (board) { await board.flush(); board.destroy(); }
@@ -486,7 +490,7 @@ const TOOLS = {
   ang: { g: 'me', name: '각도', hint: '세 점을 차례로 누르세요 (가운데가 꼭짓점).' },
   trans: { g: 'me', name: '평행이동', hint: '옮길 도형을 누른 뒤(그룹선택한 것도 됨), 옮길 방향으로 드래그하세요.' },
   formula: { g: 'fx', name: '수식', tip: '예: y=x^2-2,  y=a/x,  f(x)=a sin x', hint: '예: y=x^2-2, f(x)=a sin x, y=2x+b (모르는 문자는 슬라이더가 됩니다). 그래프가 아닌 글은 칠판에 글자로 들어갑니다.' },
-  pen: { g: 'pen', name: '펜', tip: '쓰다가 0.4초 멈추면 직선·원으로', hint: '그리다가 펜을 떼지 않고 0.4초 멈추면 직선·원으로 바뀝니다. 꼭짓점·선분·원을 0.3초 누르고 움직이면 옮겨집니다. 꼭짓점 근처에 호를 그리면 각 표시가 됩니다.' },
+  pen: { g: 'pen', name: '펜', tip: '쓰다가 0.4초 멈추면 직선·원으로 · 두 번 톡 누른 뒤 그리면 점선', hint: '그리다가 펜을 떼지 않고 0.4초 멈추면 직선·원으로 바뀝니다. 꼭짓점·선분·원을 0.3초 누르고 움직이면 옮겨집니다. 꼭짓점 근처에 호를 그리면 각 표시가 됩니다.' },
   draw: { g: 'draw', name: '도형', tip: '누르면 점 · 끌면 선 · 동그라미는 원 · 꺾어 닫으면 다각형', hint: '누르면 점, 끌면 직선, 동그라미는 원, 삼각형·사각형처럼 꺾어서 닫으면 다각형. 교점·점을 두 번 누르면 이름, 이름은 끌어서 옮김. 선분 양 끝점을 하나씩 누르거나 휜 곡선으로 이으면 길이 표시, 꼭짓점 근처 호는 각 표시. 선이 만나면 점이 자동으로. 원은 끌면 이동, 두 번 눌러 끌면 반지름만.' },
   eraser: { g: 'er', name: '지우개', tip: '지울 것을 문지르기', hint: '지울 것을 문지르세요.' },
 };
@@ -552,16 +556,15 @@ class Board {
   save() { clearTimeout(this.saveT); this.saveT = setTimeout(() => this.flush(), 500); }
   flush() { clearTimeout(this.saveT); return this.onSave(JSON.parse(cleanJSON(this.data))); }
   snap() { this.undoStack.push(cleanJSON(this.data)); if (this.undoStack.length > 80) this.undoStack.shift(); this.redoStack = []; }
+  syncUR() { if (!this.ur) return; this.ur.querySelector('[data-u]').disabled = !this.undoStack.length; this.ur.querySelector('[data-r]').disabled = !this.redoStack.length; }
   undo() { if (!this.undoStack.length) return; this.redoStack.push(cleanJSON(this.data)); this.data = JSON.parse(this.undoStack.pop()); this.afterEdit(); }
   redo() { if (!this.redoStack.length) return; this.undoStack.push(cleanJSON(this.data)); this.data = JSON.parse(this.redoStack.pop()); this.afterEdit(); }
-  afterEdit() { this.sel.clear(); this.picks = []; this.compute(); this.draw(); this.save(); }
-  afterEditKeepSel() { this.compute(); this.draw(); this.save(); }   // 그룹을 옮기거나 키운 뒤에도 계속 고른 채로
+  afterEdit() { this.sel.clear(); this.picks = []; this.compute(); this.draw(); this.save(); this.syncUR && this.syncUR(); }
+  afterEditKeepSel() { this.compute(); this.draw(); this.save(); this.syncUR && this.syncUR(); }   // 그룹을 옮기거나 키운 뒤에도 계속 고른 채로
 
   // ---------- 도구 막대 ----------
   makeToolbar() {
     const bar = h(`<div class="lab-tools">
-      <button class="tg big" data-a="undo" title="되돌리기">↶</button><button class="tg big" data-a="redo" title="다시">↷</button>
-      <span class="sep"></span>
       <button class="tg" data-a="axes">좌표축</button>
       <button class="tg" data-t="formula">수식</button>
       <button class="tg danger" data-a="clear">모두 지우기</button>
@@ -583,11 +586,17 @@ class Board {
   makeFab() {
     const fab = h(`<button class="lab-fab" title="도구 고르기">${PENCIL_SVG}</button>`);
     this.host.appendChild(fab); this.fab = fab;
+    // 도구 버튼 바로 아래: 되돌리기 · 다시
+    const ur = h(`<div class="lab-ur"><button data-u title="되돌리기">↶</button><button data-r title="다시">↷</button></div>`);
+    ur.addEventListener('pointerdown', e => e.stopPropagation());
+    ur.querySelector('[data-u]').onclick = () => this.undo(); ur.querySelector('[data-r]').onclick = () => this.redo();
+    this.host.appendChild(ur); this.ur = ur;
+    this.placeUR = () => { if (!this.fabXY) return; ur.style.left = this.fabXY.x + 'px'; ur.style.top = (this.fabXY.y + 36) + 'px'; this.syncUR(); };
     const pos = Object.assign({ x: 0.93, y: 0.1 }, LABPEN.fab || {});
     this.placeFab = () => {
       const W = this.host.clientWidth, H = this.host.clientHeight; if (!W) return;
-      const x = Math.max(32, Math.min(W - 32, pos.x * W)), y = Math.max(32, Math.min(H - 32, pos.y * H));
-      fab.style.left = x + 'px'; fab.style.top = y + 'px'; this.fabXY = { x, y };
+      const x = Math.max(50, Math.min(W - 50, pos.x * W)), y = Math.max(32, Math.min(H - 84, pos.y * H));   // 아래 되돌리기 버튼 자리까지
+      fab.style.left = x + 'px'; fab.style.top = y + 'px'; this.fabXY = { x, y }; this.placeUR();
     };
     let st = null;
     fab.addEventListener('pointerdown', e => { e.stopPropagation(); try { fab.setPointerCapture(e.pointerId); } catch (_) {} st = { x: e.clientX, y: e.clientY, moved: false }; });
@@ -650,12 +659,13 @@ class Board {
       if (!lines && g.dataset.t === 'seg') { this.openRing('line'); return; }   // 선분 → 작도 도구들
       this.setTool(g.dataset.t); this.closeRing();
     });
-    this.host.appendChild(ring); this.ring = ring; this.fab.classList.add('open');
+    this.host.appendChild(ring); this.ring = ring; this.fab.classList.add('open'); this.placeUR(); this.ur.classList.add('hide');
     setTimeout(() => { this.ringAway = ev => { if (this.ring && !this.ring.contains(ev.target) && !this.fab.contains(ev.target)) this.closeRing(); }; document.addEventListener('pointerdown', this.ringAway, true); }, 0);
   }
   closeRing() {
     if (this.ring) { this.ring.remove(); this.ring = null; }
     if (this.fab) this.fab.classList.remove('open');
+    if (this.ur) this.ur.classList.remove('hide');
     if (this.ringAway) { document.removeEventListener('pointerdown', this.ringAway, true); this.ringAway = null; }
   }
   openMenu(btn, G) {
@@ -688,7 +698,8 @@ class Board {
   showHelp() {
     if (this.helpEl) return this.helpEl.remove(), this.helpEl = null;
     const c = h(`<div class="lab-helpcard"><h4>칠판 쓰는 법</h4><ul>
-      <li><b>연필 버튼</b><span>누르면 도구 · 두 번 누르면 펜 · 끌면 자리 옮기기</span></li>
+      <li><b>연필 버튼</b><span>누르면 도구 · 두 번 누르면 펜 · 끌면 자리 옮기기 · 아래 ↶ ↷ 되돌리기</span></li>
+      <li><b>펜 점선</b><span>칠판을 두 번 톡 누르고 그대로 그리면 점선</span></li>
       <li><b>선분 칸</b><span>평행선 · 수선 · 수직이등분선 · 각의 이등분선 · 접선</span></li>
       <li><b>도형</b><span>누르면 점 · 끌면 선 · 동그라미는 원 · 꺾어 닫으면 다각형</span></li>
       <li><b>교점 두 번 누르기</b><span>점과 이름 (A, B …) 붙이기, 이름이 있으면 바꾸기</span></li>
@@ -930,12 +941,12 @@ class Board {
       if (show) {
         const r = o.st === 'big' ? 3.8 : 2.4;
         g.fillStyle = o.k === 'free' ? (o.col || '#111') : '#555'; g.beginPath(); g.arc(G.x, G.y, r, 0, 7); g.fill();
-        if (o.name) { if (o.nx === undefined || (!o.nmv && Math.hypot(o.nx, o.ny) < 23)) this.placeName(o, G); g.font = `italic 38px ${LAB_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = o.col || '#111'; g.fillText(o.name, G.x + o.nx, G.y + o.ny); }
+        if (o.name) { if (o.nx === undefined || (!o.nmv && Math.hypot(o.nx, o.ny) < 18)) this.placeName(o, G); g.font = `italic 30px ${LAB_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = o.col || '#111'; g.fillText(o.name, G.x + o.nx, G.y + o.ny); }
       }
     } else if (o.t === 'ink') {
       const p = o.pts; g.strokeStyle = col; g.lineWidth = o.w || 2.6;
       const path = () => { g.beginPath(); g.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) { if (i + 2 < p.length) g.quadraticCurveTo(p[i], p[i + 1], (p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2); else g.lineTo(p[i], p[i + 1]); } };
-      under(path); path(); g.stroke();
+      under(path); if (o.dash) g.setLineDash([8, 7]); path(); g.stroke();
     } else if (o.t === 'text') {
       const sz = o.sz || 20, parts = fracParts(o.s), hasF = parts.some(p => p.f);
       const font = k => `${o.it ? 'italic ' : ''}${Math.round(sz * k)}px ${LAB_FONT}`;
@@ -1029,6 +1040,7 @@ class Board {
   drawStroke(g) {
     const s = this.stroke;
     g.save(); g.strokeStyle = s.col; g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = 2.6;
+    if (s.dash) g.setLineDash([8, 7]);
     if (s.shape) {
       g.lineWidth = 2.2; g.beginPath();
       if (s.shape.t === 'seg') { g.moveTo(s.shape.a.x, s.shape.a.y); g.lineTo(s.shape.b.x, s.shape.b.y); }
@@ -1094,7 +1106,7 @@ class Board {
   down(e) {
     if (e.button === 2) return;
     this.closePop();
-    if (this.fab) this.fab.classList.add('dim');
+    if (this.fab) { this.fab.classList.add('dim'); this.ur.classList.add('dim'); }
     const p = this.pos(e), tol = e.pointerType === 'touch' ? 18 : 11;
     try { this.cv.setPointerCapture(e.pointerId); } catch (_) {}
     this.downAt = { p, t: performance.now(), id: e.pointerId }; this.moved = false;
@@ -1137,6 +1149,8 @@ class Board {
       if (t === 'draw' && hit && hit.kind === 'pname') { this.snap(); this.startDrag(hit, p); return; }   // 점 이름은 바로 끌어 옮김
       if (t === 'draw' && hit && hit.kind === 'circ') { this.snap(); this.startDrag(hit, p); return; }   // 원은 누른 채로 끌면 바로 이동
       this.stroke = { pts: [p], col: this.color, t0: performance.now(), mode: t };
+      const lt = this.lastTap;
+      if (t === 'pen' && lt && performance.now() - lt.t < 450 && V.dist(p, lt.p) < 40) { this.stroke.dash = true; this.lastTap = null; this.say('점선으로 그립니다'); }
       if (hit) this.lpT = setTimeout(() => { if (!this.moved && this.stroke) { this.stroke = null; this.snap(); this.startDrag(hit, p, true); this.draw(); } }, 300);
       if (t === 'pen') this.armHold(p);
       return;
@@ -1185,7 +1199,7 @@ class Board {
   }
   up(e, cancel) {
     clearTimeout(this.lpT); clearTimeout(this.holdT);
-    if (this.fab) this.fab.classList.remove('dim');
+    if (this.fab) { this.fab.classList.remove('dim'); this.ur.classList.remove('dim'); }
     const p = this.pos(e), tol = e.pointerType === 'touch' ? 18 : 11;
     const tap = this.downAt && !this.moved && performance.now() - this.downAt.t < 450;
     this.downAt = null;
@@ -1280,7 +1294,7 @@ class Board {
     const others = this.data.objs.filter(q => q.t === 'pt' && q.name && q !== o && q.nx !== undefined).map(q => { const g = this.geo.get(q.id); return g && { x: g.x + q.nx, y: g.y + q.ny }; }).filter(Boolean);
     let best = null;
     for (let i = 0; i < 16; i++) {
-      const a = -Math.PI / 4 + i * Math.PI / 8, c = { x: G.x + 25 * Math.cos(a), y: G.y + 25 * Math.sin(a) };
+      const a = -Math.PI / 4 + i * Math.PI / 8, c = { x: G.x + 21 * Math.cos(a), y: G.y + 21 * Math.sin(a) };
       let d = 99;
       for (const [q, g] of lines) {
         if (q.t === 'ang') { const v = this.geo.get(q.v); if (v) d = Math.min(d, V.dist(c, v) + 4); continue; }
@@ -1294,7 +1308,7 @@ class Board {
   }
   // 점 이름 글자를 눌렀는지
   nameHit(p) {
-    for (const o of this.data.objs) if (o.t === 'pt' && o.name && o.nx !== undefined) { const g = this.geo.get(o.id); if (g && Math.abs(p.x - g.x - o.nx) < 14 && Math.abs(p.y - g.y - o.ny) < 16) return { kind: 'pname', o }; }
+    for (const o of this.data.objs) if (o.t === 'pt' && o.name && o.nx !== undefined) { const g = this.geo.get(o.id); if (g && Math.abs(p.x - g.x - o.nx) < 12 && Math.abs(p.y - g.y - o.ny) < 14) return { kind: 'pname', o }; }
     return null;
   }
   // 수직이등분선 + 중점에 직각 표시
@@ -1797,13 +1811,13 @@ class Board {
     this.snap();
     if (s.shape && s.shape.t === 'seg') {
       const a = this.penEnd(s.shape.a), b = this.penEnd(s.shape.b, a);
-      if (a !== b) this.add({ t: 'seg', a, b, col: s.col });
+      if (a !== b) this.add({ t: 'seg', a, b, col: s.col, dash: s.dash || undefined });
     } else if (s.shape && s.shape.t === 'circ') {
       const c = this.newPoint({ x: s.shape.x, y: s.shape.y }, 'hid');
-      this.add({ t: 'circ', k: 'cr', cen: c.id, r: s.shape.r, col: s.col });
-    } else if (!this.angleFromArc(s)) {
+      this.add({ t: 'circ', k: 'cr', cen: c.id, r: s.shape.r, col: s.col, dash: s.dash || undefined });
+    } else if (s.dash || !this.angleFromArc(s)) {
       const pts = simplify(s.pts, 0.8); const flat = []; pts.forEach(q => flat.push(Math.round(q.x * 10) / 10, Math.round(q.y * 10) / 10));
-      this.add({ t: 'ink', pts: flat, col: s.col });
+      this.add({ t: 'ink', pts: flat, col: s.col, dash: s.dash || undefined });
     }
     this.afterEdit();
   }

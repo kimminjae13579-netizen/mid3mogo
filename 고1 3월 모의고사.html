@@ -224,6 +224,20 @@ table.key td.k{background:#eee;font-style:italic}
 .year-card .halves button:hover{background:var(--hl)}
 .year-card .halves button b{display:block;font-family:var(--serif);font-size:15px}
 .year-card .halves button.live{background:var(--ink);color:#fff}
+.year-card .gr{margin-top:12px;padding-top:10px;border-top:1px dashed #bdb8ad;font-size:15px;line-height:1.45;white-space:nowrap}
+.year-card .gr b{font-size:15px}
+.exam-years{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:1000px){.exam-years .year-card{padding:16px 10px}.exam-years .halves{gap:4px}.exam-years .halves button,.exam-years .halves button b{font-size:15px}.exam-years .halves button{white-space:normal}.exam-years .gr,.exam-years .gr b{font-size:16px}.exam-years .gr{white-space:normal}}
+.exam-years .halves button{font-size:17px;white-space:nowrap;padding:10px 2px}
+.exam-years .halves button b{font-size:17px}
+.exam-pick .h2{font-size:25px}
+.exam-pick [data-cuts]{font-size:17px}
+.exam-years .gr,.exam-years .gr b{font-size:17px}
+.h2row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}.h2row .h2{margin:0}
+table.cuts{border-collapse:collapse;margin:0 auto;font-size:15px;text-align:center}
+table.cuts th,table.cuts td{border:1px solid var(--line);padding:6px 9px}
+table.cuts th{background:#eee;font-family:var(--serif)}
+table.cuts td.y{font-family:var(--serif);font-weight:700}
 /* 파일 저장 */
 .bulk{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
 @media (max-width:640px){.bulk{grid-template-columns:1fr}}
@@ -266,6 +280,7 @@ table.key td.k{background:#eee;font-style:italic}
 <script src="hwpx_tpl.js"></script>
 <script src="hwpx.js"></script>
 <script src="ggb.js"></script>
+<script src="grades.js"></script>
 <script src="lab.js"></script>
 <script src="figs.js"></script>
 <script>
@@ -818,12 +833,41 @@ function download(blob, name) {
 }
 
 // ---------- 시험보기 ----------
+// 원점수(100점 만점) → 등급, 백분위(등급컷 사이를 비례로 어림)
+function scoreGrade(y, score) {
+  const G = window.GRADE_CUTS && window.GRADE_CUTS[y]; if (!G) return null;
+  const grade = G.cut.findIndex(c => score >= c) + 1;
+  const pts = [[100, G.top[1]], ...G.cut.map((c, i) => [c, G.pct[i]])];   // 점수가 큰 것부터
+  let pct = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [s1, p1] = pts[i], [s0, p0] = pts[i + 1];
+    if (score <= s1 && score >= s0) { pct = s1 === s0 ? p1 : p0 + (p1 - p0) * (score - s0) / (s1 - s0); break; }
+  }
+  return { grade, pct: Math.round(pct) };
+}
+// 그 해의 가장 최근 결과 하나: 전체 시험, 또는 1부·2부를 둘 다 풀었으면 두 점수의 합 (한쪽만 풀었으면 계산 안 함)
+function latestGrade(atts, y) {
+  const done = atts.filter(a => a.y === y && a.done && !a.custom);
+  const last = half => done.filter(a => (a.half || 0) === half).sort((a, b) => b.finishedAt - a.finishedAt)[0];
+  const full = last(0), h1 = last(1), h2 = last(2);
+  const pair = h1 && h2 ? { score: h1.score + h2.score, t: Math.max(h1.finishedAt, h2.finishedAt), how: '1부+2부' } : null;
+  const one = full ? { score: full.score, t: full.finishedAt, how: '전체' } : null;
+  const pick = one && pair ? (one.t >= pair.t ? one : pair) : one || pair;
+  return pick ? Object.assign(pick, scoreGrade(y, pick.score)) : null;
+}
+function showCuts() {
+  const ys = YEARS.slice().reverse(), G = window.GRADE_CUTS || {};
+  const rows = ys.map(y => G[y] ? `<tr><td class="y">${y}</td>${G[y].cut.slice(0, 8).map(c => `<td>${c}</td>`).join('')}</tr>` : '').join('');
+  modal(`<h3 style="text-align:center">고1 3월 수학 등급컷 (원점수)</h3><table class="cuts"><tr><th>연도</th>${[1, 2, 3, 4, 5, 6, 7, 8].map(g => `<th>${g}등급</th>`).join('')}</tr>${rows}</table>
+    <p class="muted" style="font-size:13px;text-align:center;margin-top:10px">각 등급을 받는 가장 낮은 점수입니다. 백분위는 등급컷 사이를 비례로 어림한 값입니다.</p>`, [['닫기', null, true]]);
+}
+
 async function examPick() {
   const atts = (await DB.all('att:')).filter(a => a.kind === 'exam');
-  const body = h(`<div>
+  const body = h(`<div class="exam-pick">
     <div class="section-tag">시험보기</div>
-    <p class="h2">연도와 시험 종류를 고르세요</p>
-    <div class="grid-years">${YEARS.map(y => {
+    <div class="h2row"><p class="h2">연도와 시험 종류를 고르세요</p><button class="btn" data-cuts>등급컷 보기</button></div>
+    <div class="grid-years exam-years">${YEARS.map(y => {
       const cell = half => {
         const mine = atts.filter(a => a.y === y && (a.half || 0) === half);
         const done = mine.filter(a => a.done);
@@ -831,11 +875,14 @@ async function examPick() {
         const live = mine.find(a => !a.done);
         const label = half ? `${half}부` : '전체';
         const sub = half ? (half === 1 ? '홀수번' : '짝수번') : '30문항';
-        return `<button class="${live ? 'live' : ''}" data-y="${y}" data-half="${half}"><b>${label}</b>${sub}<br>${live ? '진행 중' : best != null ? `최고 ${best}점` : `${half ? 50 : 100}분`}</button>`;
+        return `<button class="${live ? 'live' : ''}" data-y="${y}" data-half="${half}"><b>${label}</b>${sub} · ${live ? '진행 중' : `${half ? 50 : 100}분`}</button>`;
       };
-      return `<div class="year-card"><div class="y">${y} 3월</div><div class="halves">${cell(0)}${cell(1)}${cell(2)}</div></div>`;
+      const g = latestGrade(atts, y);
+      const gr = g ? `<b>${g.grade}등급</b> · 백분위 약 ${g.pct} · ${g.score}점` : '<span class="muted">전체나 1부·2부를 다 풀면 등급 표시</span>';
+      return `<div class="year-card"><div class="y">${y} 3월</div><div class="halves">${cell(0)}${cell(1)}${cell(2)}</div><div class="gr">${gr}</div></div>`;
     }).join('')}</div>
   </div>`);
+  body.querySelector('[data-cuts]').onclick = showCuts;
   body.addEventListener('click', e => {
     const b = e.target.closest('[data-y]'); if (!b) return;
     const y = +b.dataset.y, half = +b.dataset.half;
