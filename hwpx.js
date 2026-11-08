@@ -245,6 +245,8 @@
   // items: [{y, n}] ; opts: {title, subtitle, withAnswers, withSolutions, onProgress}
   async function build(items, opts) {
     const D = window.MOCK_DATA;
+    // 문제는 번호 순서대로 (1번, 2번, 3번 …, 번호가 같으면 앞선 해부터). 새 번호도 이 순서로 매김
+    items = items.slice().sort((a, b) => a.n - b.n || a.y - b.y);
     const H = header();
     const bins = [];   // {id, path, data}
     const addBin = async canvas => {
@@ -263,6 +265,21 @@
     // 문항: 한 단에 두 칸(위/아래), 큰 문항은 한 단 전체
     let first = true, colIndex = 0, slotUsed = 0;   // slotUsed: 현재 단에서 쓴 칸 수(0~2)
     const capOf = ci => (ci < 2 ? COLH - TITLEH : COLH);
+    // 쪽 나누기: 2·3점 문항은 한 쪽에 3문제(왼쪽 단 2, 오른쪽 단 1), 4점 문항은 한 쪽에 2문제(단마다 1).
+    // 점수 묶음이 바뀌는 곳과 묶음이 찬 곳에서 새 쪽 (남은 것이 적으면 그만큼만 한 쪽에)
+    const isHi = s => D[s.y][s.n - 1].score >= 4;
+    // 같은 점수 묶음(연속)을 쪽 크기로 나눔: 4점은 2씩, 2·3점은 3씩. 단 2·3점이 1개 남게 되면 마지막 4개를 2·2로
+    //   예) 5개 → 3·2, 4개 → 2·2, 7개 → 3·2·2
+    const chunks = n => { const out = []; while (n > 0) { const t = n === 4 ? 2 : Math.min(3, n); out.push(t); n -= t; } return out; };
+    const newPage = new Set(), pageOf = [];
+    for (let k = 0, pg = -1; k < items.length;) {
+      const hi = isHi(items[k]); let e = k; while (e < items.length && isHi(items[e]) === hi) e++;
+      const sizes = hi ? Array.from({ length: Math.ceil((e - k) / 2) }, (_, i) => Math.min(2, e - k - i * 2)) : chunks(e - k);
+      for (const sz of sizes) { if (k) newPage.add(k); pg++; for (let i = 0; i < sz; i++) pageOf.push(pg); k += sz; }
+    }
+    // 한 쪽에 2문제면 왼쪽 단 1 · 오른쪽 단 1 (3문제면 왼쪽 2 · 오른쪽 1)
+    const pageSize = pg => pageOf.filter(x => x === pg).length;
+    const oneCol = k => isHi(items[k]) || pageSize(pageOf[k]) === 2;
     for (let k = 0; k < items.length; k++) {
       const { y, n } = items[k];
       const it = D[y][n - 1];
@@ -277,8 +294,13 @@
       // items[k].src: 문제 그림 대신 쓸 그림(예: 내 필기를 겹친 그림). 원본과 폭이 같아 번호 위치가 그대로 맞는다
       const qsrc = items[k].src || it.q.src;
       let r = await numberedProblem(qsrc, it.q.num, `${k + 1}.`, NUMPT, capOf(colIndex) - extra - 1000);
-      let big = r.H + extra > capOf(colIndex) / 2 - 1200;
-      if (!first && (slotUsed >= 2 || (big && slotUsed > 0))) {
+      let big = oneCol(k) || r.H + extra > capOf(colIndex) / 2 - 1200;   // 4점, 2문제짜리 쪽은 한 단에 하나
+      let pageBreak = 0;
+      if (newPage.has(k) && !(colIndex % 2 === 0 && slotUsed === 0)) {
+        // 새 쪽에서 시작 (이미 새 쪽 첫머리면 그대로)
+        pageBreak = 1; colIndex += colIndex % 2 === 0 ? 2 : 1; slotUsed = 0;
+        if (colIndex === 2) { r = await numberedProblem(qsrc, it.q.num, `${k + 1}.`, NUMPT, capOf(colIndex) - extra - 1000); big = oneCol(k) || r.H + extra > capOf(colIndex) / 2 - 1200; }
+      } else if (!first && (slotUsed >= 2 || (big && slotUsed > 0))) {
         colBreak = 1; colIndex++; slotUsed = 0;
         if (colIndex % 2 === 0) lines = pageLines();          // 새 쪽
         if (colIndex === 2) {                                   // 첫 쪽을 지나면 단 높이가 커진다
@@ -286,14 +308,15 @@
           big = r.H + extra > capOf(colIndex) / 2 - 1200;
         }
       }
+      if (pageBreak) lines = pageLines();
       const { c, W, H: Hh } = r;
       const capNow = capOf(colIndex);
       const bin = await addBin(c);
       if (lab) {
-        ps.push(para((first ? colPr(2) : '') + lines + lab, { pp: H.pp.left, cp: H.cp.small, colBreak }));
-        first = false; colBreak = 0; lines = '';
+        ps.push(para((first ? colPr(2) : '') + lines + lab, { pp: H.pp.left, cp: H.cp.small, colBreak, pageBreak }));
+        first = false; colBreak = 0; pageBreak = 0; lines = '';
       }
-      ps.push(para((first ? colPr(2) : '') + lines + pic(bin, c.width, c.height, W, Hh), { pp: H.pp.left, cp: H.cp.body, colBreak }));
+      ps.push(para((first ? colPr(2) : '') + lines + pic(bin, c.width, c.height, W, Hh), { pp: H.pp.left, cp: H.cp.body, colBreak, pageBreak }));
       first = false;
       if (big) { slotUsed = 2; }
       else {
