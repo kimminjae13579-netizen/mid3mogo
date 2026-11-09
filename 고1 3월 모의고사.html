@@ -104,8 +104,10 @@ input{font:inherit}
 .pane{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
 .paper-scroll{flex:1;overflow:auto;padding:16px;-webkit-overflow-scrolling:touch}
 .paper{position:relative;background:var(--paper);margin:0 auto;max-width:900px;box-shadow:0 2px 10px rgba(0,0,0,.1);border:1px solid #c9c5bb;overflow:hidden}
-.paper img.q{position:absolute;left:0;top:0;width:100%;pointer-events:none;user-select:none;-webkit-user-drag:none}
-.paper canvas{position:absolute;left:0;top:0;touch-action:none}
+/* 문제 위 흰 여백: 문제 그림과 필기 캔버스를 같이 내려서 예전 필기도 그대로 맞음 */
+.paper{--ptop:30px}
+.paper img.q{position:absolute;left:0;top:var(--ptop);width:100%;pointer-events:none;user-select:none;-webkit-user-drag:none}
+.paper canvas{position:absolute;left:0;top:var(--ptop);touch-action:none}
 .paper .more{position:absolute;left:0;right:0;bottom:0;height:0}
 #qsBadge{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:50;background:rgba(17,17,17,.82);color:#fff;padding:6px 14px;border-radius:999px;font-size:15px;pointer-events:none;opacity:0;transition:opacity .2s}
 #qsBadge.on{opacity:1}
@@ -397,7 +399,7 @@ class Ink {
     const w = this.host.clientWidth; if (!w) return;
     this.scale = w / 1000;
     const hpx = Math.round(this.data.H * this.scale);
-    this.host.style.height = hpx + 'px';
+    this.host.style.height = hpx + (parseFloat(getComputedStyle(this.host).getPropertyValue('--ptop')) || 0) + 'px';   // 위 여백만큼 종이를 늘림
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
     while (w * hpx * dpr * dpr > 14e6 && dpr > 1) dpr -= 0.25;
     this.dpr = dpr;
@@ -630,8 +632,8 @@ function qnav(prev, next) {
 }
 
 // ---------- 지오지브라 그림 (ggb.js 의 window.GGB['연도-번호']) ----------
-const GGB_PW = '123';
 const hasGgb = (y, n) => !!(window.GGB && window.GGB[`${y}-${n}`]);
+const GGB_W = 1680, GGB_H = 832;   // 그림 파일의 화면 크기 ('2026 고1 3모.ggb'에서 나눈 파일들)
 let ggbLoader = null;
 function loadGgb() {
   if (window.GGBApplet) return Promise.resolve();
@@ -642,20 +644,20 @@ function loadGgb() {
     document.head.appendChild(s);
   });
 }
-// box 안에 그림을 넣는다. 그림 원래 크기는 1000×560 이고, box 에 꽉 차게 키우거나 줄인다
-// (fill: box 의 폭과 높이 둘 다에 맞춤 — 큰 창 / 아니면 폭에만 맞춤 — 해설 칸)
+// box 안에 그림을 넣는다. 그림 원래 크기는 GGB_W×GGB_H 이고, box 에 꽉 차게 키우거나 줄인다
+// (fill: box 의 폭과 높이 둘 다에 맞춤 — 큰 창 / 아니면 폭에만 맞춤)
 let ggbSeq = 0;
 async function mountGgb(box, y, n, { fill = false } = {}) {
   box.textContent = '그림을 불러오는 중…';
   try { await loadGgb(); } catch (e) { box.textContent = e.message; return; }
   const id = 'ggb' + (++ggbSeq);
   const W = box.clientWidth - 2, H = box.clientHeight - 2;
-  const k = Math.max(0.3, fill ? Math.min(W / 1000, H / 560) : W / 1000);
-  if (!fill) box.style.height = Math.ceil(560 * k) + 2 + 'px';
-  // 지오지브라가 이 칸의 폭(1000×k)에 맞춰 그림 전체를 키우거나 줄인다
-  box.innerHTML = `<div class="ggb-scale-${id}" style="width:${Math.floor(1000 * k)}px;height:${Math.floor(560 * k)}px"><div id="${id}"></div></div>`;
+  const k = Math.max(0.2, fill ? Math.min(W / GGB_W, H / GGB_H) : W / GGB_W);
+  if (!fill) box.style.height = Math.ceil(GGB_H * k) + 2 + 'px';
+  // 지오지브라가 이 칸의 폭(GGB_W×k)에 맞춰 그림 전체를 키우거나 줄인다
+  box.innerHTML = `<div class="ggb-scale-${id}" style="width:${Math.floor(GGB_W * k)}px;height:${Math.floor(GGB_H * k)}px"><div id="${id}"></div></div>`;
   new GGBApplet({
-    appName: 'classic', ggbBase64: window.GGB[`${y}-${n}`], width: 1000, height: 560,
+    appName: 'classic', ggbBase64: window.GGB[`${y}-${n}`], width: GGB_W, height: GGB_H,
     scaleContainerClass: 'ggb-scale-' + id, allowUpscale: true, autoHeight: false,
     showToolBar: false, showAlgebraInput: false, showMenuBar: false, enableRightClick: false,
     enableShiftDragZoom: true, showResetIcon: true, enableLabelDrags: false, useBrowserForJS: false,
@@ -669,26 +671,10 @@ function ggbModal(y, n) {
   document.body.appendChild(bg);
   mountGgb(bg.querySelector('.ggb-box'), y, n, { fill: true });
 }
-// 문제 풀 때: 암호를 넣어야 그림이 열림 (한 번 맞히면 그 화면에서는 다시 묻지 않음)
-function ggbButton(y, n) {
-  let ok = false;
-  const b = h(`<button class="btn">그림 확인하기</button>`);
-  b.onclick = () => {
-    if (ok) return ggbModal(y, n);
-    const bg = h(`<div class="modal-bg"><div class="modal" style="max-width:380px"><h3>암호를 입력하세요</h3>
-      <form class="pw"><input type="password" inputmode="numeric" autocomplete="off" placeholder="암호"><button class="btn primary">확인</button></form>
-      <div class="pw-err"></div><div class="acts"><button class="btn" type="button" data-x>취소</button></div></div></div>`);
-    const inp = bg.querySelector('input');
-    bg.querySelector('[data-x]').onclick = () => bg.remove();
-    bg.addEventListener('click', e => { if (e.target === bg) bg.remove(); });
-    bg.querySelector('form').onsubmit = e => {
-      e.preventDefault();
-      if (inp.value === GGB_PW) { ok = true; bg.remove(); ggbModal(y, n); }
-      else { bg.querySelector('.pw-err').textContent = '암호가 맞지 않습니다'; inp.value = ''; inp.focus(); }
-    };
-    document.body.appendChild(bg);
-    setTimeout(() => inp.focus(), 0);
-  };
+// [지오지브라 확인하기] 버튼: 누르면 큰 창에 그림 (해설·실험실에서 씀. 문제 풀 때는 넣지 않음)
+function ggbButton(y, n, cls = 'btn') {
+  const b = h(`<button class="${cls}">지오지브라 확인하기</button>`);
+  b.onclick = () => ggbModal(y, n);
   return b;
 }
 
@@ -1018,7 +1004,6 @@ async function examRun(id) {
     ab.appendChild(answerInput(q.n, a.answers[k], v => { a.answers[k] = v; scheduleSave(); renderOMR(); }, stopped));
     ab.appendChild(qnav(NAV.prev, NAV.next));
     pane.appendChild(ab);
-    if (hasGgb(q.y, q.n)) pane.firstChild.appendChild(ggbButton(q.y, q.n));   // 그림 확인하기는 필기 도구 줄 끝에
     if (stopped) paperObj.ink.readOnly = true;
     renderOMR();
     const cur = omr.querySelector('.r.cur'); if (cur) cur.scrollIntoView({ block: 'nearest' });
@@ -1136,14 +1121,14 @@ async function review(attId, n) {
         <div><div class="l">풀이 시간</div><div class="v">${fmtClock(a.times[n])}</div></div></div></div>
     ${hs.length > 1 ? `<div style="margin:-4px 0 14px;font-size:14px"><span class="muted" style="margin-right:6px">채점 기록</span>${histChips(hs, n)}</div>` : ''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-      <button class="btn ${inNote ? '' : 'primary'}" data-note>${inNote ? '오답노트에서 빼기' : '오답노트 담기'}</button>
+      ${isExam ? `<button class="btn ${inNote ? '' : 'primary'}" data-note>${inNote ? '오답노트에서 빼기' : '오답노트 담기'}</button>` : ''}
       <button class="btn" data-again>다시 풀기</button>
       <button class="btn" data-lock></button>
     </div>
-    ${hasGgb(q.y, q.n) ? `<div class="sol" style="margin-bottom:18px"><div class="label">그 림</div><div class="ggb-box" data-ggb></div></div>` : ''}
     <div class="sol"><div class="label">해 설</div>${it.s.map(s => `<img src="${s.src}" alt="해설">`).join('')}</div>`;
-  if (hasGgb(q.y, q.n)) mountGgb(R.querySelector('[data-ggb]'), q.y, q.n);   // 해설에서는 암호 없이 바로
-  R.querySelector('[data-note]').onclick = async e => {
+  if (hasGgb(q.y, q.n)) R.querySelector('[data-lock]').after(ggbButton(q.y, q.n, 'btn primary'));   // 해설: 누르면 지오지브라 그림
+  // 문제 풀기(연습)에서 본 해설에는 오답노트 버튼 없음 — 틀리면 자동으로 담김
+  if (isExam) R.querySelector('[data-note]').onclick = async e => {
     if (await DB.get(`wrong:${q.y}-${q.n}`)) { await DB.del(`wrong:${q.y}-${q.n}`); e.target.textContent = '오답노트 담기'; e.target.classList.add('primary'); toast('오답노트에서 뺐습니다'); }
     else { await addWrong(a, n); e.target.textContent = '오답노트에서 빼기'; e.target.classList.remove('primary'); toast('오답노트에 담았습니다'); }
   };
@@ -1225,7 +1210,6 @@ async function solve(y, n) {
   NAV = { prev: n > 1 ? () => go(`#/solve/${y}/${n - 1}`) : null, next: n < 30 ? () => go(`#/solve/${y}/${n + 1}`) : null };
   ab.appendChild(qnav(NAV.prev, NAV.next));
   ab.appendChild(h(`<span class="grow"></span>`));
-  if (hasGgb(y, n)) ab.appendChild(ggbButton(y, n));
   const g = h(`<button class="btn primary">채점하기</button>`);
   g.onclick = async () => {
     if (a.answers[n] === undefined || a.answers[n] === '') { toast('답을 먼저 고르거나 적어 주세요'); return; }

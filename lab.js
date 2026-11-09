@@ -223,7 +223,10 @@ async function labEdit(id) {
     toast('저장했습니다'); go('#/lab');
   };
   render();
-  mount(screen(old ? '문제 고치기' : '문제 만들기', { back: '#/lab' }, body));
+  const scr = screen(old ? '문제 고치기' : '문제 만들기', { back: '#/lab' }, body);
+  scr.querySelector('.page').style.marginTop = '46px';                 // 위쪽 여백
+  body.querySelector('.section-tag').style.marginBottom = '22px';
+  mount(scr);
 }
 
 // ---------------- 세트 보기: 문제 | 칠판 | 답안지 ----------------
@@ -243,7 +246,7 @@ async function labView(id) {
   el.appendChild(topbar(esc(set.title), { back: '#/lab' }));
   // 왼쪽: 문제 + 그 아래 가로 답안지 / 오른쪽 전부: 칠판
   const lab = h(`<div class="lab">
-    <div class="lab-q"><div class="lab-qhead"><span class="t"></span><button class="btn small lab-copy" data-copy>⧉ 그림 복사하기</button></div><div class="lab-qimg"><div class="wrap"><img alt="문제"></div></div>
+    <div class="lab-q"><div class="lab-qhead"><span class="t"></span><span data-ggbslot></span><button class="btn small lab-copy" data-copy>⧉ 그림 복사하기</button></div><div class="lab-qimg"><div class="wrap"><img alt="문제"></div></div>
       <div class="lab-sheet"><div class="hd"><h4>답안지</h4></div><div data-rows></div></div>
     </div>
     <div class="lab-b"></div>
@@ -273,6 +276,8 @@ async function labView(id) {
     qT.textContent = `${i + 1}. ${s.y}학년도 3월 ${s.n}번 [${it.score}점]`;
     img.src = it.q.src;
     cropOff();
+    const slot = lab.querySelector('[data-ggbslot]'); slot.innerHTML = '';
+    if (hasGgb(s.y, s.n)) slot.appendChild(ggbButton(s.y, s.n, 'btn small'));   // 지오지브라 그림이 있는 문제만
     const data = (await DB.get('labb:' + labKey(s.y, s.n))) || null;
     board = new Board(bpane, data, d => DB.set('labb:' + labKey(s.y, s.n), d));
     window.labBoard = board;   // (개발자 도구에서 살펴보기용)
