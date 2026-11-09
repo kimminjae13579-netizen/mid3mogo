@@ -126,10 +126,7 @@ input{font:inherit}
 /* OMR */
 .omr{flex:none;width:250px;background:var(--paper);border-left:2px solid var(--line);overflow:auto;padding:10px 10px 30px}
 .omr h4{margin:0;flex:1;text-align:center;font-family:var(--serif);letter-spacing:4px;font-size:18px}
-.omr .hd{display:flex;align-items:center;gap:4px;margin:2px 0 8px;border-bottom:1.5px solid var(--line);padding-bottom:6px}
-.omr .hd button{width:40px;height:36px;border:1.5px solid var(--line);background:#fff;border-radius:4px;font-size:16px}
-.omr .hd button:disabled{opacity:.35}
-.omr .sbox input{width:100%;height:100%;border:0;text-align:center;font-family:var(--serif);font-size:17px;background:#fffbe6;outline:none}
+.omr .hd{display:flex;align-items:center;gap:4px;margin:2px 0 8px;border-bottom:1.5px solid var(--line);padding-bottom:6px}.omr .sbox input{width:100%;height:100%;border:0;text-align:center;font-family:var(--serif);font-size:17px;background:#fffbe6;outline:none}
 .omr.stopped .b,.omr.stopped .sbox{cursor:default}
 .omr .r{display:flex;align-items:center;gap:3px;padding:3px 2px;border-radius:3px;cursor:pointer}
 .omr .r.cur{background:#e3e9f4}
@@ -612,7 +609,7 @@ function answerInput(n, value, onSet, disabled = false) {
   if (isMC(n)) {
     for (let i = 1; i <= 5; i++) {
       const b = h(`<button class="opt ${value === i ? 'on' : ''}" ${disabled ? 'disabled' : ''}>${CIRC[i]}</button>`);
-      b.onclick = () => { const v = value === i ? '' : i; value = v; wrap.querySelectorAll('.opt').forEach((x, k) => x.classList.toggle('on', k + 1 === v)); onSet(v); };
+      b.onclick = () => { const v = b.classList.contains('on') ? '' : i; wrap.querySelectorAll('.opt').forEach((x, k) => x.classList.toggle('on', k + 1 === v)); onSet(v); };   // 화면에 켜진 것 기준 (답안지에서 바꾼 것도 반영)
       wrap.appendChild(b);
     }
   } else {
@@ -939,7 +936,7 @@ async function examRun(id) {
   const right = h(`<span style="display:flex;gap:8px;align-items:center"><span class="timer">--:--</span><button class="btn" data-pause></button><button class="btn omr-toggle" data-omr>답안지</button><button class="btn primary" data-submit>답안 제출</button></span>`);
   const bar = topbar(a.custom ? examName(a) : `${examName(a)} 3월 고1 수학 영역`, { back: '#/', right });
   el.appendChild(bar);
-  const work = h(`<div class="work"><div class="pane"></div><div class="omr"><div class="hd"><button data-prev title="이전 문제">◀</button><h4>답 안 지</h4><button data-next title="다음 문제">▶</button></div></div></div>`);
+  const work = h(`<div class="work"><div class="pane"></div><div class="omr"><div class="hd"><h4>답 안 지</h4></div></div></div>`);
   el.appendChild(work);
   const pane = work.querySelector('.pane'), omr = work.querySelector('.omr');
 
@@ -977,11 +974,14 @@ async function examRun(id) {
       const r = h(`<div class="r ${k === n ? 'cur' : ''}" data-k="${k}"><span class="n">${k}</span>${isMC(qOf(a, k).n) ? [1, 2, 3, 4, 5].map(i => `<span class="b ${v === i ? 'on' : ''}">${i}</span>`).join('') : `<span class="sbox">${v === '' || v == null ? '' : v}</span>`}</div>`);
       omr.appendChild(r);
     }
+    // 문제 아래 답 칸도 답안지와 똑같이 맞춤 (답안지에서 고른 경우)
+    pane.querySelectorAll('.answerbar .opt').forEach((x, i) => x.classList.toggle('on', a.answers[n] === i + 1));
+    const ai = pane.querySelector('.answerbar .ansinput'); if (ai && document.activeElement !== ai) ai.value = a.answers[n] === '' || a.answers[n] == null ? '' : a.answers[n];
   }
   // 답안지: 동그라미를 누르면 답, 주관식 칸을 누르면 숫자 입력, 번호를 누르면 그 문제로
   const setAns = (k, v) => { a.answers[k] = v; scheduleSave(); renderOMR(); };
   omr.addEventListener('click', e => {
-    if (e.target.closest('.hd')) { const b = e.target.closest('button'); if (b && !b.disabled) (b.dataset.prev != null ? NAV.prev : NAV.next)(); return; }
+    if (e.target.closest('.hd')) return;
     const r = e.target.closest('.r'); if (!r) return;
     const k = +r.dataset.k, bub = e.target.closest('.b'), box = e.target.closest('.sbox');
     if (bub && !stopped) { const i = +bub.textContent; setAns(k, a.answers[k] === i ? '' : i); if (k !== n) show(k); return; }
@@ -1013,7 +1013,11 @@ async function examRun(id) {
     pane.appendChild(paperObj.scroller);
     const i = NUMS.indexOf(k);
     NAV = { prev: i > 0 ? () => show(NUMS[i - 1]) : null, next: i < NUMS.length - 1 ? () => show(NUMS[i + 1]) : null };
-    omr.querySelector('[data-prev]').disabled = !NAV.prev; omr.querySelector('[data-next]').disabled = !NAV.next;
+    // 문제 아래: 답 고르기 + 바로 옆 이전·다음
+    const ab = h(`<div class="answerbar"><span class="qn">${k}번 답</span></div>`);
+    ab.appendChild(answerInput(q.n, a.answers[k], v => { a.answers[k] = v; scheduleSave(); renderOMR(); }, stopped));
+    ab.appendChild(qnav(NAV.prev, NAV.next));
+    pane.appendChild(ab);
     if (hasGgb(q.y, q.n)) pane.firstChild.appendChild(ggbButton(q.y, q.n));   // 그림 확인하기는 필기 도구 줄 끝에
     if (stopped) paperObj.ink.readOnly = true;
     renderOMR();
