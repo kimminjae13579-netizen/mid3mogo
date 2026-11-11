@@ -64,6 +64,8 @@
 .lab-ring .col.on circle{stroke:#f2c94c;stroke-width:4}
 @keyframes labpop{from{transform:scale(.4);opacity:0}}
 .lab-host canvas{position:absolute;left:0;top:0;touch-action:none}
+.lab-zoom{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:33;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:4px 12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.lab-zoom[hidden]{display:none}
 .lab-hint{position:absolute;left:10px;bottom:8px;font-size:14px;color:#555;background:rgba(255,255,255,.92);padding:4px 10px;border-radius:5px;pointer-events:none;max-width:calc(100% - 20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .8s}
 .lab-hint.fade{opacity:0}
 .lab-pop{position:absolute;z-index:45;background:#fff;border:1.5px solid var(--line);border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.18);padding:5px;display:flex;gap:5px}
@@ -72,6 +74,7 @@
 .lab-formula{position:absolute;left:10px;right:10px;bottom:36px;display:flex;gap:6px;z-index:30}
 .lab-formula input{flex:1;border:1.5px solid var(--line);border-radius:4px;padding:8px 10px;font-size:18px;font-family:var(--serif);min-width:0;background:#fff}
 .lab-sheet{flex:none;background:var(--paper);border-top:2px solid var(--line);padding:6px 10px 8px;max-height:34%;overflow:auto}
+.lab-sheet[hidden]{display:none}
 .lab-sheet .hd{display:flex;align-items:center;gap:10px;margin-bottom:5px}
 .lab-sheet h4{margin:0;font-family:var(--serif);letter-spacing:4px;font-size:15px}
 .lab-sheet .flt label{font-size:12px;display:flex;align-items:center;gap:3px;color:var(--sub)}
@@ -246,7 +249,7 @@ async function labView(id) {
   el.appendChild(topbar(esc(set.title), { back: '#/lab' }));
   // 왼쪽: 문제 + 그 아래 가로 답안지 / 오른쪽 전부: 칠판
   const lab = h(`<div class="lab">
-    <div class="lab-q"><div class="lab-qhead"><span class="t"></span><span data-ggbslot></span><button class="btn small lab-copy" data-copy>⧉ 그림 복사하기</button></div><div class="lab-qimg"><div class="wrap"><img alt="문제"></div></div>
+    <div class="lab-q"><div class="lab-qhead"><span class="t"></span><span data-ggbslot></span><button class="btn small lab-copy" data-copy>⧉ 그림 복사하기</button><button class="btn small" data-sheettg></button></div><div class="lab-qimg"><div class="wrap"><img alt="문제"></div></div>
       <div class="lab-sheet"><div class="hd"><h4>답안지</h4></div><div data-rows></div></div>
     </div>
     <div class="lab-b"></div>
@@ -254,6 +257,12 @@ async function labView(id) {
   el.appendChild(lab);
   const qT = lab.querySelector('.lab-qhead .t'), img = lab.querySelector('.lab-qimg img'), wrap = lab.querySelector('.lab-qimg .wrap');
   const bpane = lab.querySelector('.lab-b'), rows = lab.querySelector('[data-rows]');
+  // 답안지 숨기기·보이기 (문제를 가리지 않게) — 고른 것은 기억
+  const sheetEl = lab.querySelector('.lab-sheet'), sheetBtn = lab.querySelector('[data-sheettg]');
+  let sheetHidden = false; try { sheetHidden = localStorage.getItem('labSheetHide') === '1'; } catch (e) {}
+  const paintSheet = () => { sheetEl.hidden = sheetHidden; sheetBtn.textContent = sheetHidden ? '답안지 보이기' : '답안지 숨기기'; sheetBtn.classList.toggle('on', sheetHidden); };
+  sheetBtn.onclick = () => { sheetHidden = !sheetHidden; try { localStorage.setItem('labSheetHide', sheetHidden ? '1' : '0'); } catch (e) {} paintSheet(); };
+  paintSheet();
 
   function renderSheet() {
     rows.innerHTML = '';
@@ -542,8 +551,12 @@ class Board {
     this.lastSub = { pt: 'point', ln: 'seg', ci: 'circ', me: 'len' };
     pane.innerHTML = '';
     this.toolbar = this.makeToolbar(); pane.appendChild(this.toolbar);
-    this.host = h(`<div class="lab-host"><canvas></canvas><div class="lab-hint"></div></div>`); pane.appendChild(this.host);
+    this.host = h(`<div class="lab-host"><canvas></canvas><div class="lab-hint"></div><button class="lab-zoom" hidden title="원래 크기로"></button></div>`); pane.appendChild(this.host);
     this.cv = this.host.querySelector('canvas'); this.hintEl = this.host.querySelector('.lab-hint');
+    // 보기(확대·이동): 화면 = 칠판 좌표 × vk + (vx, vy). 두 손가락으로 오므리기·벌리기·옮기기, 마우스 휠로 확대
+    this.vk = 1; this.vx = 0; this.vy = 0; this.tp = new Map(); this.gest = null;
+    this.zoomBtn = this.host.querySelector('.lab-zoom'); this.zoomBtn.onclick = () => this.setView(1, 0, 0);
+    this.cv.addEventListener('wheel', e => { e.preventDefault(); const r = this.cv.getBoundingClientRect(); this.zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
     this.makeFab();
     this.picks = []; this.sel = new Set(); this.hover = null; this.drag = null; this.stroke = null; this.preview = null;
     this.cv.addEventListener('pointerdown', e => this.down(e));
@@ -743,8 +756,8 @@ class Board {
     try { r = compileFormula(src, sliders, fns); } catch (e) { toast('수식을 읽지 못했습니다: ' + e.message); return false; }
     this.snap();
     if (!r) {   // 그래프가 아니면 글자로
-      const W = this.W, H = this.H;
-      this.add({ t: 'text', x: W / 2 - 40, y: H / 2, s: src, sz: 22, col: this.color });
+      const B = this.vb;   // 지금 보이는 곳 가운데
+      this.add({ t: 'text', x: (B.x0 + B.x1) / 2 - 40, y: (B.y0 + B.y1) / 2, s: src, sz: 22, col: this.color });
       this.afterEdit(); toast('글자로 넣었습니다. [선택]으로 끌어 옮길 수 있습니다'); return true;
     }
     let sy = 30 + 40 * this.data.objs.filter(o => o.t === 'slider').length;
@@ -752,6 +765,42 @@ class Board {
     if (r.name) this.data.objs.filter(o => o.t === 'graph' && o.name === r.name).forEach(o => this.remove(o.id, true));
     this.add({ t: 'graph', src, name: r.name, code: r.code, col: this.color });
     this.data.axes = true; this.afterEdit(); this.syncBar(); return true;
+  }
+
+  // ---------- 보기 (확대·이동) ----------
+  setView(k, x, y) {
+    this.vk = Math.min(6, Math.max(0.3, k)); this.vx = x; this.vy = y;
+    const one = Math.abs(this.vk - 1) < 0.01 && Math.abs(x) < 1 && Math.abs(y) < 1;
+    this.zoomBtn.hidden = one; this.zoomBtn.textContent = `${Math.round(this.vk * 100)}% ↺`;
+    this.draw();
+  }
+  // 화면의 (sx, sy) 자리를 그대로 두고 f배
+  zoomAt(sx, sy, f) {
+    const k = Math.min(6, Math.max(0.3, this.vk * f)), wx = (sx - this.vx) / this.vk, wy = (sy - this.vy) / this.vk;
+    this.setView(k, sx - wx * k, sy - wy * k);
+  }
+  // 지금 화면에 보이는 칠판 범위 (칠판 좌표)
+  get vb() { return { x0: -this.vx / this.vk, y0: -this.vy / this.vk, x1: (this.W - this.vx) / this.vk, y1: (this.H - this.vy) / this.vk }; }
+  toScreen(p) { return { x: p.x * this.vk + this.vx, y: p.y * this.vk + this.vy }; }
+  // 두 손가락: 처음 손가락으로 막 시작한 것(획·끌기·지우기·점)은 없던 일로 하고 확대·이동
+  startGesture() {
+    clearTimeout(this.lpT);
+    let rolled = false;
+    while (this.undoStack.length > (this.undoLenAtDown || 0)) { this.data = JSON.parse(this.undoStack.pop()); rolled = true; }
+    this.stroke = null; this.drag = null; this.rect = null; this.erasing = false; this.preview = null;
+    if (this.picksAtDown) this.picks = this.picksAtDown.slice();
+    if (rolled) this.compute();
+    const [a, b] = [...this.tp.values()];
+    this.gest = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, m: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, k: this.vk, x: this.vx, y: this.vy };
+    this.draw();
+  }
+  moveGesture() {
+    const [a, b] = [...this.tp.values()]; if (!b) return;
+    const G = this.gest, r = this.cv.getBoundingClientRect();
+    const k = Math.min(6, Math.max(0.3, G.k * Math.hypot(a.x - b.x, a.y - b.y) / G.d));
+    const wx = (G.m.x - r.left - G.x) / G.k, wy = (G.m.y - r.top - G.y) / G.k;
+    const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    this.setView(k, m.x - r.left - wx * k, m.y - r.top - wy * k);
   }
 
   // ---------- 크기 ----------
@@ -880,6 +929,7 @@ class Board {
     const g = this.ctx; if (!g) return;
     g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     g.clearRect(0, 0, this.W, this.H);
+    g.setTransform(this.dpr * this.vk, 0, 0, this.dpr * this.vk, this.dpr * this.vx, this.dpr * this.vy);   // 확대·이동
     if (this.data.axes) this.drawAxes(g);
     if (this.triHL) {
       const P = this.triHL.map(id => this.geo.get(id));
@@ -909,19 +959,20 @@ class Board {
     }
   }
   drawAxes(g) {
-    const O = this.origin, u = this.unit;
+    const O = this.origin, u = this.unit, B = this.vb;   // 보이는 범위에만 그림
+    const gx0 = O.x + Math.ceil((B.x0 - O.x) / u) * u, gy0 = O.y + Math.ceil((B.y0 - O.y) / u) * u;
     g.save(); g.lineWidth = 1;
     g.strokeStyle = '#eceae4';
-    for (let x = O.x % u; x < this.W; x += u) { g.beginPath(); g.moveTo(x + .5, 0); g.lineTo(x + .5, this.H); g.stroke(); }
-    for (let y = O.y % u; y < this.H; y += u) { g.beginPath(); g.moveTo(0, y + .5); g.lineTo(this.W, y + .5); g.stroke(); }
+    for (let x = gx0; x < B.x1; x += u) { g.beginPath(); g.moveTo(x + .5, B.y0); g.lineTo(x + .5, B.y1); g.stroke(); }
+    for (let y = gy0; y < B.y1; y += u) { g.beginPath(); g.moveTo(B.x0, y + .5); g.lineTo(B.x1, y + .5); g.stroke(); }
     g.strokeStyle = '#555'; g.lineWidth = 1.3;
-    g.beginPath(); g.moveTo(0, O.y + .5); g.lineTo(this.W, O.y + .5); g.moveTo(O.x + .5, 0); g.lineTo(O.x + .5, this.H); g.stroke();
+    g.beginPath(); g.moveTo(B.x0, O.y + .5); g.lineTo(B.x1, O.y + .5); g.moveTo(O.x + .5, B.y0); g.lineTo(O.x + .5, B.y1); g.stroke();
     g.fillStyle = '#666'; g.font = `12px ${LAB_FONT}`; g.textAlign = 'center'; g.textBaseline = 'top';
-    for (let x = O.x % u, k = Math.round((O.x % u - O.x) / u); x < this.W; x += u, k++) if (k) g.fillText(k, x, O.y + 4);
+    for (let x = gx0; x < B.x1; x += u) { const k = Math.round((x - O.x) / u); if (k) g.fillText(k, x, O.y + 4); }
     g.textAlign = 'right'; g.textBaseline = 'middle';
-    for (let y = O.y % u, k = Math.round((O.y - O.y % u) / u); y < this.H; y += u, k--) if (k) g.fillText(k, O.x - 5, y);
+    for (let y = gy0; y < B.y1; y += u) { const k = Math.round((O.y - y) / u); if (k) g.fillText(k, O.x - 5, y); }
     g.font = `italic 16px ${LAB_FONT}`; g.fillStyle = '#333'; g.textAlign = 'right'; g.textBaseline = 'bottom';
-    g.fillText('x', this.W - 6, O.y - 3); g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText('y', O.x + 6, 4); g.fillText('O', O.x + 4, O.y + 3);
+    g.fillText('x', B.x1 - 6, O.y - 3); g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText('y', O.x + 6, B.y0 + 4); g.fillText('O', O.x + 4, O.y + 3);
     g.restore();
   }
   drawObj(g, o, hl) {
@@ -997,20 +1048,20 @@ class Board {
       g.fillStyle = o.col || '#1d4fb3'; g.fillText(s, q.x, q.y);
     } else if (o.t === 'graph') {
       if (!o._f) return g.restore();
-      const O = this.origin, u = this.unit;
+      const O = this.origin, u = this.unit, B = this.vb, VH = B.y1 - B.y0;
       g.strokeStyle = col; g.lineWidth = 2.4; g.beginPath(); let pen = false, py0 = null;
-      for (let px = 0; px <= this.W; px += 1.5) {
+      for (let px = B.x0; px <= B.x1; px += 1.5 / this.vk) {
         let y; try { y = o._f((px - O.x) / u, this.S, this.F); } catch (e) { y = NaN; }
         const py = O.y - y * u;
-        if (!isFinite(py) || Math.abs(py) > 1e5 || (py0 !== null && Math.abs(py - py0) > this.H * 2)) { pen = false; py0 = null; continue; }
+        if (!isFinite(py) || Math.abs(py) > 1e5 || (py0 !== null && Math.abs(py - py0) > VH * 2)) { pen = false; py0 = null; continue; }
         if (pen) g.lineTo(px, py); else { g.moveTo(px, py); pen = true; }
         py0 = py;
       }
       if (hl) { g.save(); g.strokeStyle = 'rgba(29,79,179,.28)'; g.lineWidth = 9; g.stroke(); g.restore(); }
       g.stroke();
       g.font = `italic 16px ${LAB_FONT}`; g.fillStyle = col; g.textAlign = 'left';
-      const lx = this.W - 150; let ly; try { ly = O.y - o._f((lx - O.x) / u, this.S, this.F) * u; } catch (e) { ly = NaN; }
-      if (isFinite(ly) && ly > 14 && ly < this.H - 14) g.fillText(o.name ? `${o.name}(x)` : o.src, lx + 6, ly - 10);
+      const lx = B.x1 - 150 / this.vk; let ly; try { ly = O.y - o._f((lx - O.x) / u, this.S, this.F) * u; } catch (e) { ly = NaN; }
+      if (isFinite(ly) && ly > B.y0 + 14 && ly < B.y1 - 14) g.fillText(o.name ? `${o.name}(x)` : o.src, lx + 6, ly - 10);
     } else if (o.t === 'slider') {
       const W = 140; const t = (o.v - o.min) / (o.max - o.min);
       g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(o.x - 6, o.y - 22, W + 12, 34);
@@ -1066,7 +1117,7 @@ class Board {
   }
 
   // ---------- 찾기 ----------
-  pos(e) { const r = this.cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  pos(e) { const r = this.cv.getBoundingClientRect(); return { x: (e.clientX - r.left - this.vx) / this.vk, y: (e.clientY - r.top - this.vy) / this.vk }; }
   // 누른 곳의 객체 (kinds: 고를 종류)
   hitTest(p, tol, kinds) {
     const ok = t => !kinds || kinds.includes(t);
@@ -1110,9 +1161,18 @@ class Board {
   // ---------- 입력 ----------
   down(e) {
     if (e.button === 2) return;
+    // 손가락: 두 개가 닿으면 확대·이동 (그동안 다른 동작은 하지 않음)
+    if (e.pointerType === 'touch') {
+      this.tp.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      try { this.cv.setPointerCapture(e.pointerId); } catch (_) {}
+      if (this.gest) return;
+      if (this.tp.size === 2) { this.startGesture(); return; }
+      if (this.tp.size > 2) return;
+    }
+    this.undoLenAtDown = this.undoStack.length; this.picksAtDown = this.picks.slice();
     this.closePop();
     if (this.fab) { this.fab.classList.add('dim'); this.ur.classList.add('dim'); }
-    const p = this.pos(e), tol = e.pointerType === 'touch' ? 18 : 11;
+    const p = this.pos(e), tol = (e.pointerType === 'touch' ? 18 : 11) / this.vk;
     try { this.cv.setPointerCapture(e.pointerId); } catch (_) {}
     this.downAt = { p, t: performance.now(), id: e.pointerId }; this.moved = false;
     const t = this.tool;
@@ -1177,7 +1237,9 @@ class Board {
     this.toolDown(p, tol);
   }
   move(e) {
-    const p = this.pos(e), tol = e.pointerType === 'touch' ? 18 : 11;
+    if (this.tp.has(e.pointerId)) this.tp.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this.gest) { if (this.tp.size >= 2) this.moveGesture(); return; }
+    const p = this.pos(e), tol = (e.pointerType === 'touch' ? 18 : 11) / this.vk;
     this.mouse = p;
     if (this.downAt && V.dist(p, this.downAt.p) > 5) { this.moved = true; clearTimeout(this.lpT); }
     if (this.drag) { this.doDrag(p); return; }
@@ -1201,9 +1263,11 @@ class Board {
     } else if (this.picks.length && (this.tool === 'seg' || this.tool === 'circ')) { this.updatePreview(p); this.draw(); }
   }
   up(e, cancel) {
+    this.tp.delete(e.pointerId);
+    if (this.gest) { if (!this.tp.size) { this.gest = null; this.downAt = null; } return; }   // 손가락을 모두 뗄 때까지는 확대·이동만
     clearTimeout(this.lpT); clearTimeout(this.holdT);
     if (this.fab) { this.fab.classList.remove('dim'); this.ur.classList.remove('dim'); }
-    const p = this.pos(e), tol = e.pointerType === 'touch' ? 18 : 11;
+    const p = this.pos(e), tol = (e.pointerType === 'touch' ? 18 : 11) / this.vk;
     const tap = this.downAt && !this.moved && performance.now() - this.downAt.t < 450;
     this.downAt = null;
     if (this.drag) {
@@ -1329,9 +1393,9 @@ class Board {
   popup(p, items, onClose) {
     this.closePop(); this.popClose = onClose || null;
     const m = h(`<div class="lab-pop">${items.map((it, i) => `<button data-i="${i}">${it[0]}</button>`).join('')}</div>`);
-    const pr = this.pane.getBoundingClientRect(), hr = this.host.getBoundingClientRect();
-    m.style.left = Math.max(4, Math.min(p.x + hr.left - pr.left + 8, pr.width - 260)) + 'px';
-    m.style.top = Math.max(4, p.y + hr.top - pr.top + 8) + 'px';
+    const pr = this.pane.getBoundingClientRect(), hr = this.host.getBoundingClientRect(), s = this.toScreen(p);
+    m.style.left = Math.max(4, Math.min(s.x + hr.left - pr.left + 8, pr.width - 260)) + 'px';
+    m.style.top = Math.max(4, s.y + hr.top - pr.top + 8) + 'px';
     m.onclick = e => { const b = e.target.closest('[data-i]'); if (b) { this.closePop(); items[+b.dataset.i][1](); } };
     this.pane.appendChild(m); this.pop = m;
     setTimeout(() => { this.popAway = ev => { if (!m.contains(ev.target)) this.closePop(); }; document.addEventListener('pointerdown', this.popAway); }, 0);
@@ -1758,7 +1822,7 @@ class Board {
       const gn = this.geo.get(id); if (!gn) continue;
       for (const o of lines) {
         if (o.id === id || (inside && inside.has(o.id))) continue;   // 함께 옮기는 것끼리는 원래 모양 그대로이므로 건너뜀
-        const xs = intersect(gn, this.geo.get(o.id)).filter(X => X.x >= -5 && X.y >= -5 && X.x <= this.W + 5 && X.y <= this.H + 5);
+        const B = this.vb, xs = intersect(gn, this.geo.get(o.id)).filter(X => X.x >= B.x0 - 5 && X.y >= B.y0 - 5 && X.x <= B.x1 + 5 && X.y <= B.y1 + 5);
         if (!xs.length) continue;
         // 이 두 도형의 교점이 이미 있으면(잠시 떨어져 안 보이는 것 포함) 새로 만들지 않음
         const pair = this.data.objs.filter(q => q.t === 'pt' && q.k === 'inter' && ((q.o1 === o.id && q.o2 === id) || (q.o1 === id && q.o2 === o.id)));
@@ -1852,8 +1916,9 @@ class Board {
   // ---------- 그림 복사 결과 넣기 ----------
   insertFigure(fig) {
     this.snap();
-    const k = Math.min((this.W * 0.8) / fig.w, (this.H * 0.8) / fig.h, 1.5);   // 칠판의 8할 정도 (풀이 쓸 자리 남김)
-    const ox = (this.W - fig.w * k) / 2, oy = (this.H - fig.h * k) / 2, T = q => ({ x: ox + q.x * k, y: oy + q.y * k });
+    const B = this.vb, BW = B.x1 - B.x0, BH = B.y1 - B.y0;   // 지금 보이는 칠판의 8할 정도 (풀이 쓸 자리 남김)
+    const k = Math.min((BW * 0.8) / fig.w, (BH * 0.8) / fig.h, 1.5 / this.vk);
+    const ox = B.x0 + (BW - fig.w * k) / 2, oy = B.y0 + (BH - fig.h * k) / 2, T = q => ({ x: ox + q.x * k, y: oy + q.y * k });
     const newIds = [], pid = new Map();
     const P = (i) => { if (!pid.has(i)) { const q = fig.points[i]; const o = this.newPoint(T(q), q.dot ? 'small' : 'hid'); o.auto = false; pid.set(i, o.id); newIds.push(o.id); } return pid.get(i); };
     const segIds = fig.segs.map(s => { const id = this.add({ t: 'seg', a: P(s.a), b: P(s.b), col: '#111', dash: s.dash || undefined }).id; newIds.push(id); return id; });
