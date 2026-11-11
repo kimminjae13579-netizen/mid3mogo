@@ -504,7 +504,7 @@ const TOOLS = {
   ang: { g: 'me', name: '각도', hint: '세 점을 차례로 누르세요 (가운데가 꼭짓점).' },
   trans: { g: 'me', name: '평행이동', hint: '옮길 도형을 누른 뒤(그룹선택한 것도 됨), 옮길 방향으로 드래그하세요.' },
   formula: { g: 'fx', name: '수식', tip: '예: y=x^2-2,  y=a/x,  f(x)=a sin x', hint: '예: y=x^2-2, f(x)=a sin x, y=2x+b (모르는 문자는 슬라이더가 됩니다). 그래프가 아닌 글은 칠판에 글자로 들어갑니다.' },
-  pen: { g: 'pen', name: '펜', tip: '쓰는 그대로 기록합니다', hint: '쓰는 그대로 기록합니다 (직선·원 등으로 바꾸지 않음). 도형을 옮기려면 [선택]을 쓰세요.' },
+  pen: { g: 'pen', name: '펜', tip: '쓰는 그대로 기록 · 두 번 톡 누른 뒤 그리면 점선', hint: '쓰는 그대로 기록합니다 (직선·원 등으로 바꾸지 않음). 톡 누르고 바로 다시 눌러 그리면 점선. 도형을 옮기려면 [선택]을 쓰세요.' },
   draw: { g: 'draw', name: '도형', tip: '누르면 점 · 끌면 선 · 동그라미는 원 · 꺾어 닫으면 다각형', hint: '누르면 점, 끌면 직선, 동그라미는 원, 삼각형·사각형처럼 꺾어서 닫으면 다각형. 교점·점을 두 번 누르면 이름, 이름은 끌어서 옮김. 선분 양 끝점을 하나씩 누르거나 휜 곡선으로 이으면 길이 표시, 꼭짓점 근처 호는 각 표시. 선이 만나면 점이 자동으로. 원은 끌면 이동, 두 번 눌러 끌면 반지름만.' },
   eraser: { g: 'er', name: '지우개', tip: '지울 것을 문지르기', hint: '지울 것을 문지르세요.' },
 };
@@ -718,6 +718,7 @@ class Board {
     const c = h(`<div class="lab-helpcard"><h4>칠판 쓰는 법</h4><ul>
       <li><b>연필 버튼</b><span>누르면 도구 · 두 번 누르면 펜 · 끌면 자리 옮기기 · 아래 ↶ ↷ 되돌리기</span></li>
       <li><b>펜</b><span>쓰는 그대로 기록 (직선·원·각 표시로 바꾸지 않음)</span></li>
+      <li><b>펜 점선</b><span>칠판을 두 번 톡 누르고 그대로 그리면 점선</span></li>
       <li><b>선분 칸</b><span>평행선 · 수선 · 수직이등분선 · 각의 이등분선 · 접선</span></li>
       <li><b>도형</b><span>누르면 점 · 끌면 선 · 동그라미는 원 · 꺾어 닫으면 다각형</span></li>
       <li><b>교점 두 번 누르기</b><span>점과 이름 (A, B …) 붙이기, 이름이 있으면 바꾸기</span></li>
@@ -1209,8 +1210,15 @@ class Board {
       this.rect = [p, p]; this.draw(); return;
     }
     if (t === 'eraser') { this.snap(); this.erasing = true; this.eraseAt(p, tol); return; }
-    // 펜: 쓰는 그대로 기록 (직선·원·각 표시·점선 바꾸기, 꾹 눌러 옮기기 모두 하지 않음)
-    if (t === 'pen') { this.stroke = { pts: [p], col: this.color, t0: performance.now(), mode: 'pen' }; return; }
+    // 펜: 쓰는 그대로 기록 (직선·원·각 표시로 바꾸기, 꾹 눌러 옮기기 하지 않음)
+    // 단, 톡 누른 바로 뒤(0.45초 안, 가까운 곳)에 다시 눌러 그리면 그 획은 점선
+    if (t === 'pen') {
+      this.stroke = { pts: [p], col: this.color, t0: performance.now(), mode: 'pen' };
+      const pt = this.penTap;
+      if (pt && performance.now() - pt.t < 450 && V.dist(p, pt.p) < 40 / this.vk) { this.stroke.dash = true; this.stroke.dotId = pt.id; this.say('점선으로 그립니다'); }
+      this.penTap = null;
+      return;
+    }
     if (t === 'draw') {
       const hit = this.dragHit(p, tol);
       if (hit && hit.kind === 'pname') { this.snap(); this.startDrag(hit, p); return; }   // 점 이름은 바로 끌어 옮김
@@ -1870,7 +1878,11 @@ class Board {
     this.snap();
     const flat = []; s.pts.forEach(q => flat.push(Math.round(q.x * 10) / 10, Math.round(q.y * 10) / 10));
     if (flat.length === 2) flat.push(flat[0] + 0.1, flat[1] + 0.1);   // 점 하나도 보이게
-    this.add({ t: 'ink', pts: flat, col: s.col });
+    const isTap = tap || pathLen(s.pts) < 4;
+    const dash = s.dash && !isTap;                                     // 점선은 실제로 그은 획만
+    if (dash && s.dotId != null && this.obj(s.dotId)) this.remove(s.dotId);   // 점선을 시작하려고 톡 찍은 점은 지움
+    const o = this.add({ t: 'ink', pts: flat, col: s.col, dash: dash || undefined });
+    this.penTap = isTap ? { t: performance.now(), p, id: o.id } : null;   // 이 톡 바로 뒤에 그리면 점선
     this.afterEdit();
   }
   // 펜으로 그은 선분의 끝: 가까운 점에 붙이고, 다른 선분 위면 그 선분을 나눠 꼭짓점을 공유
