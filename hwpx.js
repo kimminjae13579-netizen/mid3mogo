@@ -396,5 +396,153 @@
     return zipStore(files);
   }
 
-  window.HWPX = { build };
+  // ======================================================================
+  // PDF: 한글 파일과 같은 양식 — 위 build()와 같은 크기·여백·단·쪽 나누기 규칙으로
+  // 쪽마다 그림(200dpi)을 그려 A4 PDF로 묶는다. 길이 단위는 한글과 같은 HWPUNIT(1pt = 100).
+  // ======================================================================
+  const PX = (210 / 25.4 * 200) / PAGE.w;                 // HWPUNIT → 픽셀 (200dpi)
+  const PDF_FONT = '"Noto Serif KR","Batang","바탕",serif';
+  const FIRST_COLTOP = BODYTOP + 8800;                      // 첫 쪽: 윗줄 문구·제목·굵은 선 아래부터 문항
+
+  function makePdf(imgs, title) {
+    const enc = new TextEncoder(), chunks = [], offs = [];
+    let len = 0;
+    const push = x => { const b = typeof x === 'string' ? enc.encode(x) : x; chunks.push(b); len += b.length; };
+    const obj = (id, body) => { offs[id] = len; push(`${id} 0 obj\n`); body(); push('\nendobj\n'); };
+    const n = imgs.length, total = 4 + 3 * n;            // 1 문서, 2 쪽 목록, 3 정보, 그다음 쪽마다 (쪽, 내용, 그림)
+    const utf16 = s => '<FEFF' + [...s].map(ch => { const c = ch.codePointAt(0); return c > 0xffff ? [0xd800 + ((c - 0x10000) >> 10), 0xdc00 + ((c - 0x10000) & 0x3ff)].map(v => v.toString(16).padStart(4, '0')).join('') : c.toString(16).padStart(4, '0'); }).join('').toUpperCase() + '>';
+    push('%PDF-1.4\n'); push(new Uint8Array([37, 226, 227, 207, 211, 10]));
+    obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
+    obj(2, () => push(`<< /Type /Pages /Kids [${imgs.map((_, i) => `${4 + 3 * i} 0 R`).join(' ')}] /Count ${n} >>`));
+    obj(3, () => push(`<< /Title ${utf16(title || '')} /Creator ${utf16('고1 3월 모의고사 앱')} >>`));
+    imgs.forEach((im, i) => {
+      const p = 4 + 3 * i, cs = 'q 595.28 0 0 841.89 0 0 cm /Im0 Do Q';
+      obj(p, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 ${p + 2} 0 R >> >> /Contents ${p + 1} 0 R >>`));
+      obj(p + 1, () => { push(`<< /Length ${cs.length} >>\nstream\n`); push(cs); push('\nendstream'); });
+      obj(p + 2, () => { push(`<< /Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.bytes.length} >>\nstream\n`); push(im.bytes); push('\nendstream'); });
+    });
+    const xref = len;
+    push(`xref\n0 ${total}\n0000000000 65535 f \n`);
+    for (let i = 1; i < total; i++) push(String(offs[i]).padStart(10, '0') + ' 00000 n \n');
+    push(`trailer\n<< /Size ${total} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xref}\n%%EOF`);
+    return new Blob(chunks, { type: 'application/pdf' });
+  }
+  const jpeg = c => new Promise(res => c.toBlob(b => b.arrayBuffer().then(a => res({ bytes: new Uint8Array(a), w: c.width, h: c.height })), 'image/jpeg', 0.9));
+
+  async function buildPdf(items, opts) {
+    const D = window.MOCK_DATA;
+    items = items.slice().sort((a, b) => a.n - b.n || a.y - b.y);   // build()와 같은 순서·번호
+    try { await Promise.all(['bold 40px "Noto Serif KR"', '40px "Noto Serif KR"'].map(f => document.fonts.load(f))); } catch (e) {}
+    const PW = Math.round(PAGE.w * PX), PH = Math.round(PAGE.h * PX);
+    const pages = []; let g = null;
+    const R = (x, y, w, h) => g.fillRect(x * PX, y * PX, Math.max(1, w * PX), Math.max(1, h * PX));
+    const say = (s, x, y, pt, bold, align = 'left') => { g.font = `${bold ? 'bold ' : ''}${pt * 100 * PX}px ${PDF_FONT}`; g.textAlign = align; g.textBaseline = 'alphabetic'; g.fillText(s, x * PX, y * PX); };
+    const put = (c, x, y, W, H) => g.drawImage(c, x * PX, y * PX, W * PX, H * PX);
+    // 새 쪽: 첫 쪽은 윗줄 문구·제목·굵은 선·단 구분선, 다음 쪽부터는 맨 위 굵은 선과 단 구분선 (build의 pageLines와 같은 자리)
+    const addPage = first => {
+      const c = document.createElement('canvas'); c.width = PW; c.height = PH; g = c.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, PW, PH); g.fillStyle = '#000'; pages.push(c);
+      const mid = PAGE.ml + BODYW / 2;
+      if (first) {
+        say(opts.subtitle || '', mid, BODYTOP + 1500, 13, false, 'center');
+        say(opts.title || '수학 영역', mid, BODYTOP + 2080 + 3900, 32, true, 'center');
+        R(PAGE.ml, BODYTOP + 7500, BODYW, 198);
+        R(MIDX - (THIN >> 1), BODYTOP + 8100, THIN, BODYBOT - BODYTOP - 8100);
+      } else {
+        R(PAGE.ml, BODYTOP - 500, BODYW, 198);
+        R(MIDX - (THIN >> 1), BODYTOP - 200, THIN, BODYBOT - BODYTOP + 200);
+      }
+    };
+    const colX = ci => PAGE.ml + (ci % 2 ? COLW + GAP : 0);
+    const colTop = ci => (ci < 2 ? FIRST_COLTOP : BODYTOP);
+    const toCol = ci => { while (pages.length <= (ci >> 1)) addPage(false); g = pages[ci >> 1].getContext('2d'); g.fillStyle = '#000'; };
+    // '5지선다형' / '단답형' 상자 (가로 9500, 세로 1700, 0.12mm 테두리, 11pt 가운데)
+    const labelBox = (t, x, y) => {
+      const bw = 34; R(x, y, 9500, bw); R(x, y + 1700 - bw, 9500, bw); R(x, y, bw, 1700); R(x + 9500 - bw, y, bw, 1700);
+      say(t, x + 4750, y + 1700 / 2 + 400, 11, false, 'center');
+    };
+
+    addPage(true);
+    // ----- 문항: build()의 단·칸 나누기와 똑같이 -----
+    let first = true, colIndex = 0, slotUsed = 0, cy = colTop(0);
+    const capOf = ci => (ci < 2 ? COLH - TITLEH : COLH);
+    const isHi = s => D[s.y][s.n - 1].score >= 4;
+    const chunks = n => { const out = []; while (n > 0) { const t = n === 4 ? 2 : Math.min(3, n); out.push(t); n -= t; } return out; };
+    const newPage = new Set(), pageOf = [];
+    for (let k = 0, pg = -1; k < items.length;) {
+      const hi = isHi(items[k]); let e = k; while (e < items.length && isHi(items[e]) === hi) e++;
+      const sizes = hi ? Array.from({ length: Math.ceil((e - k) / 2) }, (_, i) => Math.min(2, e - k - i * 2)) : chunks(e - k);
+      for (const sz of sizes) { if (k) newPage.add(k); pg++; for (let i = 0; i < sz; i++) pageOf.push(pg); k += sz; }
+    }
+    const pageSize = pg => pageOf.filter(x => x === pg).length;
+    const oneCol = k => isHi(items[k]) || pageSize(pageOf[k]) === 2;
+    for (let k = 0; k < items.length; k++) {
+      const { y, n } = items[k];
+      const it = D[y][n - 1];
+      opts.onProgress && opts.onProgress(0.6 * k / items.length);
+      const kind = n <= 21 ? '5지선다형' : '단답형';
+      const prevKind = k ? (items[k - 1].n <= 21 ? '5지선다형' : '단답형') : null;
+      const lab = kind !== prevKind ? kind : '';
+      const extra = lab ? LABELH : 0;
+      const qsrc = items[k].src || it.q.src;
+      let r = await numberedProblem(qsrc, it.q.num, `${k + 1}.`, NUMPT, capOf(colIndex) - extra - 1000);
+      let big = oneCol(k) || r.H + extra > capOf(colIndex) / 2 - 1200;
+      if (newPage.has(k) && !(colIndex % 2 === 0 && slotUsed === 0)) {
+        colIndex += colIndex % 2 === 0 ? 2 : 1; slotUsed = 0; toCol(colIndex); cy = colTop(colIndex);
+        if (colIndex === 2) { r = await numberedProblem(qsrc, it.q.num, `${k + 1}.`, NUMPT, capOf(colIndex) - extra - 1000); big = oneCol(k) || r.H + extra > capOf(colIndex) / 2 - 1200; }
+      } else if (!first && (slotUsed >= 2 || (big && slotUsed > 0))) {
+        colIndex++; slotUsed = 0; toCol(colIndex); cy = colTop(colIndex);
+        if (colIndex === 2) { r = await numberedProblem(qsrc, it.q.num, `${k + 1}.`, NUMPT, capOf(colIndex) - extra - 1000); big = r.H + extra > capOf(colIndex) / 2 - 1200; }
+      }
+      first = false;
+      const capNow = capOf(colIndex), x = colX(colIndex);
+      if (lab) { labelBox(lab, x, cy); cy += LABELH; }
+      put(r.c, x, cy, r.W, r.H); cy += r.H;
+      if (big) slotUsed = 2;
+      else {
+        slotUsed++;
+        if (slotUsed === 1) cy += Math.max(1, Math.floor((capNow / 2 - r.H - extra - 800) / LINE)) * LINE;
+      }
+    }
+    // ----- 정답·해설: build()와 같이 단 높이를 세어 흘려 놓음 -----
+    let col = 0, used = 0, ci0 = 0;
+    const startPage = () => { addPage(false); ci0 = (pages.length - 1) * 2; col = 0; used = 0; };
+    const slot = h => {   // 높이 h를 놓을 자리 (x, y)
+      if (used > 0 && used + h > COLH - 1500) { col++; used = 0; toCol(ci0 + col); }
+      const at = { x: colX(ci0 + col), y: BODYTOP + used }; used += h; return at;
+    };
+    if (opts.withAnswers) {
+      startPage();
+      const a0 = slot(2600); say('정답', a0.x, a0.y + 1700, 15, true);
+      slot(LINE);
+      items.forEach(({ y, n }, k) => {
+        const it = D[y][n - 1], a = it.ans <= 5 && n <= 21 ? CIRC[it.ans] : String(it.ans);
+        const at = slot(LINE); say(`${k + 1}.  ${a}      (${y}학년도 3월 ${n}번, ${it.score}점)`, at.x, at.y + 1150, 10, false);
+      });
+    }
+    if (opts.withSolutions) {
+      startPage();
+      const h0 = slot(2600); say('해설', h0.x, h0.y + 1700, 15, true);
+      for (let k = 0; k < items.length; k++) {
+        const { y, n } = items[k];
+        const it = D[y][n - 1];
+        opts.onProgress && opts.onProgress(0.6 + 0.3 * k / items.length);
+        for (let s = 0; s < it.s.length; s++) {
+          const seg = it.s[s];
+          const maxPx = Math.floor((COLH - 2000) * seg.w / COLW);
+          const c = await renumbered(seg.src, s === 0 ? seg.num : null, s === 0 ? `${k + 1}.` : null, false);
+          for (const part of split(c, maxPx)) {
+            const Hh = Math.round(part.height * COLW / part.width);
+            const at = slot(Hh + 300); put(part, at.x, at.y, COLW, Hh);
+          }
+        }
+        slot(LINE);
+      }
+    }
+    const imgs = [];
+    for (let i = 0; i < pages.length; i++) { imgs.push(await jpeg(pages[i])); opts.onProgress && opts.onProgress(0.9 + 0.1 * (i + 1) / pages.length); }
+    return makePdf(imgs, opts.title);
+  }
+
+  window.HWPX = { build, buildPdf };
 })();

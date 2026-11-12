@@ -1242,14 +1242,15 @@ async function wrongNote() {
     <p class="h2">${entries.length ? `${entries.length}문항 <span class="muted" style="font-size:15px;font-weight:400">· 다시 풀어 맞힌 문제 ${entries.filter(fixed).length}개</span>` : '아직 담은 문제가 없습니다'}</p>
     ${entries.length ? `<div class="chips" style="margin-bottom:14px"><button class="chip on" data-f="0">전체</button>${GRADES.map(g => `<button class="chip" data-f="${g}">${g}학년</button>`).join('')}<button class="chip" data-f="-1">아직 못 맞힌 문제</button></div>
     <div class="printbar"><label><input type="checkbox" data-all> 보이는 문제 모두 선택</label><span class="grow"></span>
-      <label><input type="checkbox" data-pans checked> 정답</label><label><input type="checkbox" data-psol checked> 해설</label><button class="btn primary" data-print disabled>파일로 저장</button></div>
+      <label><input type="checkbox" data-pans checked> 정답</label><label><input type="checkbox" data-psol checked> 해설</label><button class="btn primary" data-print disabled>한글 파일로 저장</button><button class="btn primary" data-printpdf disabled>PDF로 저장</button></div>
     <div class="progress" hidden data-prog><div></div></div>` : '<p class="muted">시험 결과 화면에서 [오답노트 담기]를 누르거나, 연습하기에서 틀리면 여기에 모입니다.</p>'}
     <div class="list"></div></div>`);
   const list = body.querySelector('.list');
   const visible = () => entries.filter(e => !(filter > 0 && gradeOf(item(e.y, e.n).unit) !== filter) && !(filter === -1 && fixed(e)));
   const syncBar = () => {
     const pb = body.querySelector('[data-print]'); if (!pb) return;
-    pb.disabled = !picked.size; pb.textContent = picked.size ? `파일로 저장 (${picked.size}문항)` : '파일로 저장';
+    pb.disabled = !picked.size; pb.textContent = picked.size ? `한글 파일로 저장 (${picked.size}문항)` : '한글 파일로 저장';
+    const pp = body.querySelector('[data-printpdf]'); pp.disabled = !picked.size; pp.textContent = picked.size ? `PDF로 저장 (${picked.size}문항)` : 'PDF로 저장';
     const vis = visible();
     body.querySelector('[data-all]').checked = vis.length > 0 && vis.every(e => picked.has(key(e)));
   };
@@ -1278,26 +1279,28 @@ async function wrongNote() {
   });
   if (entries.length) {
     body.querySelector('[data-all]').onchange = ev => { for (const e of visible()) ev.target.checked ? picked.add(key(e)) : picked.delete(key(e)); render(); };
-    body.querySelector('[data-print]').onclick = async ev => {
-      const btn = ev.target, label = btn.textContent;
+    // 한글 파일 / PDF (같은 양식): 화면에 보이는 순서대로, 문제 그림에 내 필기를 겹쳐서
+    const saveNote = async (btn, pdf) => {
+      const label = btn.textContent;
       const prog = body.querySelector('[data-prog]');
       btn.disabled = true; btn.textContent = '만드는 중…'; prog.hidden = false;
       try {
-        // 화면에 보이는 순서대로, 문제 그림에 내 필기를 겹쳐 한글 파일로
         const chosen = entries.filter(e => picked.has(key(e)));
         const items = [];
         for (const e of chosen) { const a = atts[e.att]; items.push({ y: e.y, n: e.n, src: await inkedProblem(e.y, e.n, a && a.ink && a.ink[e.k || e.n]) }); }
-        const blob = await HWPX.build(items, {
+        const blob = await HWPX[pdf ? 'buildPdf' : 'build'](items, {
           title: '오답노트', subtitle: `고1 3월 전국연합학력평가 · 내 풀이 포함 ${items.length}문항`,
           withAnswers: body.querySelector('[data-pans]').checked, withSolutions: body.querySelector('[data-psol]').checked,
           onProgress: f => { prog.firstElementChild.style.width = Math.round(f * 100) + '%'; },
         });
-        window.__lastHwpx = blob;
-        download(blob, `오답노트_${new Date().toISOString().slice(0, 10)}_${items.length}문항.hwpx`);
-        toast('한글 파일을 저장했습니다');
+        window[pdf ? '__lastPdf' : '__lastHwpx'] = blob;
+        download(blob, `오답노트_${new Date().toISOString().slice(0, 10)}_${items.length}문항.${pdf ? 'pdf' : 'hwpx'}`);
+        toast(pdf ? 'PDF 파일을 저장했습니다' : '한글 파일을 저장했습니다');
       } catch (err) { console.error(err); alert('파일을 만들지 못했습니다: ' + err.message); }
       btn.disabled = false; btn.textContent = label; prog.hidden = true;
     };
+    body.querySelector('[data-print]').onclick = ev => saveNote(ev.target, false);
+    body.querySelector('[data-printpdf]').onclick = ev => saveNote(ev.target, true);
   }
   render();
   mount(screen('오답노트', {}, body));
@@ -1438,7 +1441,7 @@ async function exportPage() {
     <div class="nums" style="margin-top:12px" data-nums></div>
     <div class="h3">3. 고른 문제 <span class="muted" data-count></span> <button class="btn small" data-clear style="float:right">모두 비우기</button></div>
     <div class="sel-list" data-list></div>
-    <div style="margin-top:22px;display:flex;justify-content:flex-end;gap:10px"><button class="btn primary" data-make>한글 파일(.hwpx)로 저장</button><button class="btn primary" data-exam>시험지 만들기</button></div>
+    <div style="margin-top:22px;display:flex;justify-content:flex-end;gap:10px"><button class="btn primary" data-make>한글 파일(.hwpx)로 저장</button><button class="btn primary" data-pdf>PDF로 저장</button><button class="btn primary" data-exam>시험지 만들기</button></div>
     <div class="progress" hidden><div></div></div>
   </div>`);
   const nums = body.querySelector('[data-nums]'), list = body.querySelector('[data-list]'), qres = body.querySelector('[data-qres]'), qin = body.querySelector('[data-q]');
@@ -1503,23 +1506,26 @@ async function exportPage() {
     e.target.value = ''; keep(); render();
   };
   body.querySelector('[data-clear]').onclick = () => { if (sel.length && confirm('고른 문제를 모두 비울까요?')) { sel = []; keep(); render(); } };
-  body.querySelector('[data-make]').onclick = async e => {
+  // 한글 파일 / PDF: 같은 양식(같은 쪽 나누기·크기)으로 만든다
+  const saveFile = async (btn, pdf) => {
     if (!sel.length) return toast('문제를 먼저 고르세요');
-    const btn = e.target; btn.disabled = true; btn.textContent = '만드는 중…';
+    const label = btn.textContent; btn.disabled = true; btn.textContent = '만드는 중…';
     const prog = body.querySelector('.progress'); prog.hidden = false;
     try {
       const title = body.querySelector('[data-title]').value.trim() || '수학 영역';
-      const blob = await HWPX.build(sel, {
+      const blob = await HWPX[pdf ? 'buildPdf' : 'build'](sel, {
         title, subtitle: body.querySelector('[data-sub]').value.trim(),
         withAnswers: true, withSolutions: true,   // 문제 뒤에 정답과 해설을 항상 넣음
         onProgress: f => { prog.firstElementChild.style.width = Math.round(f * 100) + '%'; },
       });
-      window.__lastHwpx = blob;
-      download(blob, `${title.replace(/[\\/:*?"<>|]/g, '')}_${sel.length}문항.hwpx`);
-      toast('한글 파일을 저장했습니다');
+      window[pdf ? '__lastPdf' : '__lastHwpx'] = blob;
+      download(blob, `${title.replace(/[\\/:*?"<>|]/g, '')}_${sel.length}문항.${pdf ? 'pdf' : 'hwpx'}`);
+      toast(pdf ? 'PDF 파일을 저장했습니다' : '한글 파일을 저장했습니다');
     } catch (err) { console.error(err); alert('파일을 만들지 못했습니다: ' + err.message); }
-    btn.disabled = false; btn.textContent = '한글 파일(.hwpx)로 저장'; prog.hidden = true;
+    btn.disabled = false; btn.textContent = label; prog.hidden = true;
   };
+  body.querySelector('[data-make]').onclick = e => saveFile(e.target, false);
+  body.querySelector('[data-pdf]').onclick = e => saveFile(e.target, true);
   // 시험지 만들기: 고른 문제만으로 시험 (30문항 100분 비율로 시간)
   body.querySelector('[data-exam]').onclick = () => {
     if (!sel.length) return toast('문제를 먼저 고르세요');
